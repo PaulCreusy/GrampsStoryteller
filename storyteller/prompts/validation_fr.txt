@@ -1,0 +1,14 @@
+Tu relis un texte de mise en contexte historique rédigé à partir d'extraits numérotés de Wikipédia.
+
+Signale uniquement :
+- les affirmations suivies d'un numéro de source dont l'extrait ne contient pas l'information ;
+- les affirmations qui ne sont ni sourcées ni encadrées par les balises <cg> et </cg> ;
+- les passages qui parlent d'une personne en particulier ou présentent un repère comme un événement de vie.
+
+Réponds uniquement avec un objet JSON de la forme {"ok": true, "problemes": []}, où "problemes" est une liste de phrases courtes en {langue}.
+
+Extraits :
+{sources}
+
+Texte à vérifier :
+{texte}

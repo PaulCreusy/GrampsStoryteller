@@ -1,0 +1,10 @@
+Repères :
+{reperes}
+{profession}
+
+Extraits de sources :
+{sources}
+
+Consigne sur les sources : {consigne_sources}
+
+Rédige environ {longueur} mots en {langue}.
