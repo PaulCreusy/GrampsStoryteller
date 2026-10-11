@@ -38,7 +38,10 @@ externe. Le texte est stocké dans une note attachée à la personne.
 
 ### 1.3 Note produite
 
-- Contenu : **contexte + liste des sources** uniquement (pas d'en-tête).
+- Contenu : **contexte + liste des sources** uniquement (pas d'en-tête),
+  suivie d'une **ligne discrète** en bas des sources : date de génération,
+  fournisseur et modèle utilisés (ex. « Généré le 11/10/2026 —
+  OpenAI gpt-… »).
 - Type de note personnalisé « Récit de vie » et tag `Storyteller`, rattachée à
   la personne.
 - Régénération : la note portant le tag `Storyteller` est **remplacée**.
@@ -69,6 +72,7 @@ GrampsStoryteller/
 │   ├── sources/
 │   │   ├── wikipedia.py   # MediaWiki API client
 │   │   ├── hierarchy.py   # Commune -> department -> region -> country fallback chain
+│   │   ├── fr_admin.py    # Postal/INSEE code -> department; department -> region / historical province tables
 │   │   ├── sections.py    # "History" section extraction and period filtering
 │   │   └── cache.py
 │   ├── llm/{base.py, openai_compat.py, anthropic.py, gemini.py, registry.py}
@@ -183,13 +187,26 @@ au plus large :
    France) », « Seconde République »), choisi par une table année → période,
    puis par recherche en repli.
 
-Résolution de chaque niveau :
+Résolution de chaque niveau, par ordre de priorité :
 
-- d'abord la **hiérarchie de lieux Gramps** (`PlaceRef` parents) ;
-- si un niveau manque, recherche Wikipédia par titre
-  (« <commune> (<département>) » puis « <commune> »), et en dernier recours
-  `geosearch` sur les coordonnées ;
-- les homonymes sont départagés par le département/pays connu.
+1. **Code du lieu Gramps** (champ « Code » : code postal ou code INSEE) :
+   - département = 2 premiers caractères (3 pour l'outre-mer `97x`) ;
+     Corse : `2A`/`2B` en INSEE, `20` en postal départagé par la hiérarchie
+     ou par Wikipédia ;
+   - région actuelle et province historique déduites du département par des
+     **tables locales** embarquées dans le plugin (aucun appel réseau) ;
+   - le code postal et le code INSEE ont tous deux 5 chiffres : seul le
+     département en est déduit, ce qui fonctionne pour les deux (à de rares
+     exceptions près pour les codes postaux, signalées si la hiérarchie
+     Gramps contredit le code) ;
+2. **Hiérarchie de lieux Gramps** (`PlaceRef` parents) pour les niveaux non
+   couverts par le code et pour les lieux hors de France ;
+3. **Wikipédia** en repli : recherche par titre
+   (« <commune> (<département>) » puis « <commune> »), puis `geosearch` sur
+   les coordonnées.
+
+Les homonymes sont départagés par le département déduit du code. Le code du
+lieu sert uniquement à la résolution locale et n'est **jamais envoyé**.
 
 ### 4.2 Sélection et richesse
 
