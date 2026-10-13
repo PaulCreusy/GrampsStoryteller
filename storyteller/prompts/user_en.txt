@@ -1,0 +1,10 @@
+Landmarks:
+{reperes}
+{profession}
+
+Source excerpts:
+{sources}
+
+Instruction about sources: {consigne_sources}
+
+Write about {longueur} words in {langue}.
