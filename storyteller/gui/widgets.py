@@ -46,7 +46,9 @@ def text_view(editable: bool = False, monospace: bool = False,
     view.set_left_margin(6)
     view.set_right_margin(6)
     scrolled = Gtk.ScrolledWindow()
-    scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+    # The text wraps: a horizontal scrollbar would let the window grow to
+    # the height of the whole text
+    scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
     scrolled.set_shadow_type(Gtk.ShadowType.IN)
     scrolled.set_min_content_height(height)
     scrolled.add(view)

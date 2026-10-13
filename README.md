@@ -54,20 +54,24 @@ restart Gramps.
    - a custom person filter (created with the Person Filter Editor);
    - the whole tree.
 
-   The window lists, for each person, the lines that will be sent, and the
-   persons that will be skipped (living, private, without usable landmark, or
-   already having a note when "Skip the persons who already have a Storyteller
-   note" is ticked).
-5. **Preview the request** shows exactly what will be sent for the first
-   context (nothing is sent to the LLM at this step, only to Wikipedia).
-6. **Generate** writes the notes. Running it again replaces them.
+   A line under the choice tells how many persons will be processed and how many
+   notes will be replaced.
+5. **Data sent...** opens a window listing, for each person, the years and
+   places that will be sent, and the persons that will be skipped (living,
+   private, without usable landmark, or already having a note when "Skip the
+   persons who already have a Storyteller note" is ticked). Its "Full request"
+   tab fetches the Wikipedia excerpts and shows the exact prompts; nothing is
+   sent to the LLM at this step.
+6. **Generate** writes the notes. Running it again replaces them. At the end, a
+   result window opens: for one person, the note and its warnings; for several
+   persons, the list of the persons (with a filter on the problems) and the
+   details of the selected one. **Show the result** reopens it.
 
 For several persons, a confirmation shows the number of notes, of LLM requests
 and an upper bound of the tokens before anything is sent. Persons with exactly
 the same landmarks share one generation. Each note is written in its own undoable
 transaction, the batch can be stopped at any time, and it stops by itself after
-three failures in a row (e.g. a wrong API key). The result lists every person
-with the warnings of their text.
+three failures in a row (e.g. a wrong API key).
 
 ## Checking the text
 

@@ -29,6 +29,12 @@ from .sources.hierarchy import DEFAULT_BUDGETS
 
 SKIP_EXISTING = "existing_note"
 
+# Outcome of a person after a run
+STATUS_ADDED = "added"
+STATUS_REPLACED = "replaced"
+STATUS_NOT_WRITTEN = "not_written"
+STATUS_FAILED = "failed"
+
 # The batch stops after this many failed groups in a row (missing key,
 # unreachable server...), instead of failing the same way for every person
 MAX_CONSECUTIVE_ERRORS = 3
@@ -200,6 +206,62 @@ class BatchPlan:
 
 
 @dataclass
+class PersonOutcome:
+    """
+    What happened to one person during a run, for the result window.
+
+    Attributes
+    ----------
+    name : str
+        Displayed name (local only).
+    gramps_id : str
+        Gramps identifier (local only).
+    status : str
+        STATUS_ADDED, STATUS_REPLACED, STATUS_NOT_WRITTEN or STATUS_FAILED.
+    message : str
+        Error message, empty when the note was written.
+    warnings : list of str
+        Warnings of the sources and of the checks.
+    corrected : list of str
+        Problems fixed by the automatic correction.
+    text : str
+        Text of the note (or generated text when it was not written).
+    original_text : str or None
+        Text before the automatic correction.
+    from_cache : bool
+        Whether the text came from the cache.
+    llm_checked : bool
+        Whether the LLM validation ran.
+    llm_problems : int
+        Problems left after the LLM validation (and correction).
+    """
+
+    name: str
+    gramps_id: str
+    status: str
+    message: str = ""
+    warnings: List[str] = field(default_factory=list)
+    corrected: List[str] = field(default_factory=list)
+    text: str = ""
+    original_text: Optional[str] = None
+    from_cache: bool = False
+    llm_checked: bool = False
+    llm_problems: int = 0
+
+    @property
+    def written(self) -> bool:
+        """
+        Tell whether the note was written.
+
+        Returns
+        -------
+        bool
+            True for an added or replaced note.
+        """
+        return self.status in (STATUS_ADDED, STATUS_REPLACED)
+
+
+@dataclass
 class BatchReport:
     """
     Outcome of a batch run.
@@ -220,6 +282,8 @@ class BatchReport:
         Whether the batch was stopped before the end.
     aborted : str or None
         Error that stopped the batch after repeated failures.
+    outcomes : list of PersonOutcome
+        Outcome of each processed person, in order.
     """
 
     created: int = 0
@@ -229,6 +293,28 @@ class BatchReport:
     with_warnings: int = 0
     cancelled: bool = False
     aborted: Optional[str] = None
+    outcomes: List[PersonOutcome] = field(default_factory=list)
+
+    def add(self, outcome: PersonOutcome):
+        """
+        Record the outcome of a person and update the counters.
+
+        Parameters
+        ----------
+        outcome : PersonOutcome
+            Outcome.
+        """
+        self.outcomes.append(outcome)
+        if outcome.status == STATUS_ADDED:
+            self.created += 1
+        elif outcome.status == STATUS_REPLACED:
+            self.replaced += 1
+        elif outcome.status == STATUS_NOT_WRITTEN:
+            self.not_written += 1
+        else:
+            self.failed += 1
+        if outcome.written and outcome.warnings:
+            self.with_warnings += 1
 
 
 #############

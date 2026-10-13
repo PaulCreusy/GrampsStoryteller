@@ -1,7 +1,7 @@
 """
-Main window of the tool: selects the persons, shows what will be sent,
-previews the full request and generates the notes, for one person or a
-batch.
+Main window of the tool, kept compact: which persons, which options, and the
+progress of a run. What is sent and the result are shown in popups, only when
+the user asks for them or at the end of a run.
 """
 
 ###########
@@ -25,11 +25,10 @@ from gramps.gui.plug import tool
 
 # Local imports #
 from ..batch import (
-    MAX_CONSECUTIVE_ERRORS, SKIP_EXISTING, BatchGroup, BatchPlan, BatchReport, build_plan,
-    run_batch)
+    MAX_CONSECUTIVE_ERRORS, SKIP_EXISTING, STATUS_ADDED, STATUS_FAILED, STATUS_NOT_WRITTEN,
+    STATUS_REPLACED, BatchGroup, BatchPlan, BatchReport, PersonOutcome, build_plan, run_batch)
 from ..config import Settings
 from ..extraction import SKIP_LIVING, SKIP_NO_LANDMARK, SKIP_PRIVATE, extract_person
-from ..http import Cancelled
 from ..i18n import _
 from ..llm.registry import PRESETS
 from ..models import GenerationResult, PersonFacts
@@ -39,20 +38,20 @@ from ..pipeline import StoryPipeline
 from ..selection import (
     GENERATION_SCOPES, SCOPE_ACTIVE, SCOPE_ALL, SCOPE_ANCESTORS, SCOPE_DESCENDANTS, SCOPE_FILTER,
     SCOPE_SELECTED, custom_filters, people_for_scope, persons_with_story_note)
+from .result_dialog import ResultDialog, report_summary
+from .sent_dialog import SentDataDialog
 from .settings_dialog import edit_settings
-from .widgets import framed, set_text, text_view, wrapped_label
+from .widgets import framed, wrapped_label
 
 #############
 # Constants #
 #############
 
 RESPONSE_SETTINGS = 1
-RESPONSE_PREVIEW = 2
+RESPONSE_SENT_DATA = 2
 RESPONSE_GENERATE = 3
 RESPONSE_STOP = 4
 
-# Persons listed in the landmarks view of a batch
-MAX_LISTED_PERSONS = 300
 # Persons read between two refreshes of the interface
 EVENTS_EVERY = 25
 
@@ -93,6 +92,26 @@ def _thousands(value: int) -> str:
         Formatted number.
     """
     return "{:,}".format(value).replace(",", " ")
+
+
+def _request_lines(request) -> List[str]:
+    """
+    Return the lines of a request as displayed.
+
+    Parameters
+    ----------
+    request : ContextRequest
+        Anonymized request.
+
+    Returns
+    -------
+    list of str
+        Landmarks and occupation.
+    """
+    lines = list(request.lines)
+    if request.occupation:
+        lines.append(_("Occupation: %s") % request.occupation)
+    return lines
 
 
 ###########
@@ -138,11 +157,12 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         self.batch_report: Optional[BatchReport] = None
         self.batch_total = 0
         self.batch_done = 0
-        self.batch_log: List[str] = []
+        self.sent_dialog: Optional[SentDataDialog] = None
+        self.result_dialog: Optional[ResultDialog] = None
 
         self._build()
         self.set_window(self.dialog, None, self.label)
-        self.setup_configs("interface.grampsstoryteller", 760, 700)
+        self.setup_configs("interface.grampsstoryteller-compact", 620, 300)
         self.show()
         self._refresh()
 
@@ -154,62 +174,30 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         """
         self.dialog = Gtk.Dialog()
         self.settings_button = self.dialog.add_button(_("_Settings..."), RESPONSE_SETTINGS)
-        self.preview_button = self.dialog.add_button(_("_Preview the request"), RESPONSE_PREVIEW)
+        self.sent_button = self.dialog.add_button(_("_Data sent..."), RESPONSE_SENT_DATA)
+        self.sent_button.set_tooltip_text(_(
+            "Shows the years and places sent for each person and, on demand, the full request "
+            "with the Wikipedia excerpts. Nothing is sent to the LLM."))
         self.stop_button = self.dialog.add_button(_("_Stop"), RESPONSE_STOP)
         self.generate_button = self.dialog.add_button(_("_Generate"), RESPONSE_GENERATE)
         self.dialog.add_button(_("_Close"), Gtk.ResponseType.CLOSE)
+        self.dialog.set_default_response(RESPONSE_GENERATE)
         self.dialog.connect("response", self._on_response)
 
         box = self.dialog.get_content_area()
-        box.set_spacing(8)
-        box.set_border_width(8)
+        box.set_spacing(10)
+        box.set_border_width(10)
         box.pack_start(framed(_("Persons"), self._build_scope()), False, False, 0)
-
-        sent_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        scrolled, self.sent_view = text_view(monospace=True, height=110)
-        sent_box.pack_start(wrapped_label(_(
-            "Only the years, places and occupations (and the matching Wikipedia excerpts) are "
-            "sent. No name, no identifier and no event type ever leave Gramps.")),
-            False, False, 0)
-        sent_box.pack_start(scrolled, True, True, 0)
-        box.pack_start(framed(_("Anonymized landmarks"), sent_box), True, True, 0)
-
-        options = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, column_spacing=12,
-                              max_children_per_line=4)
-        self.occupation_check = Gtk.CheckButton(label=_("Send the occupation"))
-        self.occupation_check.set_active(bool(self.settings["include_occupation"]))
-        self.occupation_check.connect("toggled", self._on_occupation_toggled)
-        self.validation_check = Gtk.CheckButton(label=_("LLM validation"))
-        self.validation_check.set_active(bool(self.settings["llm_validation"]))
-        self.validation_check.connect("toggled", self._on_validation_toggled)
-        self.validation_check.set_tooltip_text(
-            _("Checks the text with a second request (costs more tokens)."))
-        self.correction_check = Gtk.CheckButton(label=_("Automatic correction"))
-        self.correction_check.set_active(bool(self.settings["auto_correction"]))
-        self.correction_check.connect("toggled", self._on_correction_toggled)
-        self.correction_check.set_tooltip_text(_(
-            "When the validation finds problems, the text is rewritten without them, then "
-            "checked again (two more requests)."))
-        self.no_cache_check = Gtk.CheckButton(label=_("Regenerate (ignore the cache)"))
-        for widget in (self.occupation_check, self.validation_check, self.correction_check,
-                       self.no_cache_check):
-            options.add(widget)
-        box.pack_start(options, False, False, 0)
-        self._update_correction_sensitivity()
-
-        self.model_label = wrapped_label()
-        box.pack_start(self.model_label, False, False, 0)
-        self._update_model_label()
-
-        self.progress = Gtk.ProgressBar(show_text=False)
-        self.status_label = wrapped_label()
-        box.pack_start(self.progress, False, False, 0)
-        box.pack_start(self.status_label, False, False, 0)
-
-        scrolled, self.result_view = text_view(height=200)
-        box.pack_start(framed(_("Result"), scrolled), True, True, 0)
+        box.pack_start(framed(_("Options"), self._build_options()), False, False, 0)
+        box.pack_start(self._build_status(), False, False, 0)
+        # Shown only when relevant, even when Gramps calls show_all()
+        for widget in (self.generations_label, self.generations, self.filter_combo,
+                       self.progress, self.result_button, self.stop_button,
+                       self.status_label):
+            widget.set_no_show_all(True)
         self.dialog.show_all()
         self._update_scope_widgets()
+        self._update_correction_sensitivity()
         self._set_running(False)
 
     def _build_scope(self) -> Gtk.Widget:
@@ -247,21 +235,83 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         self.filter_combo.connect("changed", lambda _w: self._schedule_refresh())
         row.pack_start(self.filter_combo, True, True, 0)
 
-        refresh = Gtk.Button(label=_("Refresh"))
-        refresh.set_tooltip_text(_("Read the persons again (after changing the active person or "
-                                   "the selection)."))
-        refresh.connect("clicked", lambda _b: self._refresh())
-        row.pack_end(refresh, False, False, 0)
-        self.refresh_button = refresh
+        self.refresh_button = Gtk.Button.new_from_icon_name("view-refresh",
+                                                            Gtk.IconSize.BUTTON)
+        self.refresh_button.set_tooltip_text(_(
+            "Read the persons again (after changing the active person or the selection)."))
+        self.refresh_button.connect("clicked", lambda _b: self._refresh())
+        row.pack_end(self.refresh_button, False, False, 0)
         outer.pack_start(row, False, False, 0)
+
+        self.summary_label = wrapped_label()
+        outer.pack_start(self.summary_label, False, False, 0)
 
         self.skip_existing_check = Gtk.CheckButton(
             label=_("Skip the persons who already have a Storyteller note"))
         self.skip_existing_check.connect("toggled", lambda _w: self._show_plan())
         outer.pack_start(self.skip_existing_check, False, False, 0)
+        return outer
 
-        self.summary_label = wrapped_label()
-        outer.pack_start(self.summary_label, False, False, 0)
+    def _build_options(self) -> Gtk.Widget:
+        """
+        Build the options of the run.
+
+        Returns
+        -------
+        Gtk.Widget
+            Options widgets.
+        """
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        grid = Gtk.Grid(column_spacing=18, row_spacing=4)
+        self.occupation_check = Gtk.CheckButton(label=_("Send the occupation"))
+        self.occupation_check.set_active(bool(self.settings["include_occupation"]))
+        self.occupation_check.connect("toggled", self._on_occupation_toggled)
+        self.no_cache_check = Gtk.CheckButton(label=_("Regenerate (ignore the cache)"))
+        self.no_cache_check.set_tooltip_text(_(
+            "By default, a context already generated with the same sources and prompts is "
+            "reused without calling the LLM."))
+        self.validation_check = Gtk.CheckButton(label=_("LLM validation"))
+        self.validation_check.set_active(bool(self.settings["llm_validation"]))
+        self.validation_check.connect("toggled", self._on_validation_toggled)
+        self.validation_check.set_tooltip_text(
+            _("Checks the text with a second request (costs more tokens)."))
+        self.correction_check = Gtk.CheckButton(label=_("Automatic correction"))
+        self.correction_check.set_active(bool(self.settings["auto_correction"]))
+        self.correction_check.connect("toggled", self._on_correction_toggled)
+        self.correction_check.set_tooltip_text(_(
+            "When the validation finds problems, the text is rewritten without them, then "
+            "checked again (two more requests)."))
+        grid.attach(self.occupation_check, 0, 0, 1, 1)
+        grid.attach(self.no_cache_check, 0, 1, 1, 1)
+        grid.attach(self.validation_check, 1, 0, 1, 1)
+        grid.attach(self.correction_check, 1, 1, 1, 1)
+        outer.pack_start(grid, False, False, 0)
+
+        self.model_label = wrapped_label()
+        self.model_label.get_style_context().add_class("dim-label")
+        outer.pack_start(self.model_label, False, False, 0)
+        self._update_model_label()
+        return outer
+
+    def _build_status(self) -> Gtk.Widget:
+        """
+        Build the progress and status line.
+
+        Returns
+        -------
+        Gtk.Widget
+            Status widgets.
+        """
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        self.progress = Gtk.ProgressBar()
+        outer.pack_start(self.progress, False, False, 0)
+        row = Gtk.Box(spacing=8)
+        self.status_label = wrapped_label()
+        self.result_button = Gtk.Button(label=_("Show the result"))
+        self.result_button.connect("clicked", lambda _b: self._show_result())
+        row.pack_start(self.status_label, True, True, 0)
+        row.pack_end(self.result_button, False, False, 0)
+        outer.pack_start(row, False, False, 0)
         return outer
 
     def build_menu_names(self, obj):
@@ -303,30 +353,45 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         self.generations.set_visible(scope in GENERATION_SCOPES)
         self.filter_combo.set_visible(scope == SCOPE_FILTER)
 
+    def _has_work(self) -> bool:
+        """
+        Tell whether at least one person can be processed.
+
+        Returns
+        -------
+        bool
+            True when the plan has a context to generate.
+        """
+        return bool(self.facts_list) and bool(self._plan().groups)
+
     def _set_running(self, running: bool):
         """
-        Enable or disable the actions while a request runs.
+        Enable or disable the actions while a run or a reading goes on.
 
         Parameters
         ----------
         running : bool
-            Whether a request is running.
+            Whether a run is going on.
         """
         self.running = running
         busy = running or self.collecting
-        for widget in (self.settings_button, self.preview_button, self.generate_button,
-                       self.scope_combo, self.refresh_button, self.generations,
-                       self.filter_combo, self.skip_existing_check):
+        for widget in (self.settings_button, self.scope_combo, self.refresh_button,
+                       self.generations, self.filter_combo, self.skip_existing_check,
+                       self.occupation_check, self.validation_check, self.no_cache_check):
             widget.set_sensitive(not busy)
+        self.correction_check.set_sensitive(not busy and self.validation_check.get_active())
+        work = not busy and self._has_work()
+        self.generate_button.set_sensitive(work)
+        self.sent_button.set_sensitive(not busy and bool(self.facts_list))
         self.stop_button.set_sensitive(running)
+        self.stop_button.set_visible(running)
         if running:
             self.stop_event.clear()
             self.progress.set_fraction(0.0)
-            if self.pulse_id is None:
-                self.pulse_id = GLib.timeout_add(120, self._pulse)
-        else:
+            self.progress.show()
+        elif not self.collecting:
             self._stop_pulse()
-            self.progress.set_fraction(0.0)
+            self.progress.hide()
 
     def _stop_pulse(self):
         """
@@ -335,6 +400,13 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         if self.pulse_id is not None:
             GLib.source_remove(self.pulse_id)
             self.pulse_id = None
+
+    def _start_pulse(self):
+        """
+        Animate the progress bar when the progress is unknown.
+        """
+        if self.pulse_id is None:
+            self.pulse_id = GLib.timeout_add(120, self._pulse)
 
     def _pulse(self) -> bool:
         """
@@ -362,8 +434,9 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         bool
             False, to run once.
         """
-        if self.window is not None:
+        if self._is_open():
             self.status_label.set_text(text)
+            self.status_label.set_visible(bool(text))
         return False
 
     def _is_open(self) -> bool:
@@ -466,7 +539,7 @@ class StorytellerTool(tool.Tool, ManagedWindow):
 
     def _refresh(self):
         """
-        Read the persons of the scope and show what will be sent.
+        Read the persons of the scope and summarize what will be done.
 
         The tree is read in the GTK main loop (the database is not shared
         with the worker thread), refreshing the interface regularly.
@@ -494,6 +567,7 @@ class StorytellerTool(tool.Tool, ManagedWindow):
                                                  name_displayer.display(person),
                                                  include_occupation=True))
             if index % EVENTS_EVERY == EVENTS_EVERY - 1:
+                self.progress.show()
                 self.progress.set_fraction((index + 1) / len(handles))
                 self._set_status(_("Reading the persons: %(done)d / %(total)d")
                                  % {"done": index + 1, "total": len(handles)})
@@ -504,14 +578,16 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         self.existing_notes = persons_with_story_note(self.db, handles)
         self.facts_list = facts_list
         self.collecting = False
-        self._set_running(False)
-        self._set_status("")
+        # Keep the summary of the last run next to its "Show the result" button
+        self._set_status(" ".join(report_summary(self.batch_report, MAX_CONSECUTIVE_ERRORS))
+                         if self.batch_report is not None and self.batch_report.outcomes
+                         else "")
         if not facts_list:
-            self.summary_label.set_markup("<b>%s</b>" % html.escape(
+            self.summary_label.set_markup("<i>%s</i>" % html.escape(
                 self._empty_scope_message(scope)))
-            set_text(self.sent_view, "")
-            return
-        self._show_plan()
+        else:
+            self._show_plan()
+        self._set_running(False)
 
     def _plan(self, settings: Optional[Settings] = None) -> BatchPlan:
         """
@@ -534,7 +610,7 @@ class StorytellerTool(tool.Tool, ManagedWindow):
 
     def _show_plan(self):
         """
-        Display the persons, what will be sent for each and a summary.
+        Summarize, in one or two lines, the persons that will be processed.
         """
         if self.collecting or not self.facts_list:
             return
@@ -542,67 +618,36 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         reasons = _skip_reasons()
         if len(plan.items) == 1:
             item = plan.items[0]
-            facts = item.facts
-            self.summary_label.set_markup("<b>%s</b> [%s]%s" % (
-                html.escape(facts.name), html.escape(facts.gramps_id),
-                html.escape(" — " + _("a note already exists and will be replaced"))
-                if item.has_note and not item.skip_reason else ""))
+            name = "<b>%s</b> [%s]" % (html.escape(item.facts.name),
+                                       html.escape(item.facts.gramps_id))
             if item.skip_reason:
-                set_text(self.sent_view, _("Nothing will be sent: %s.")
-                         % reasons.get(item.skip_reason, item.skip_reason))
-                return
-            set_text(self.sent_view, "\n".join(self._request_lines(item.request)))
-            return
-
-        skipped = plan.skipped()
-        parts = [_("%(count)d persons: %(process)d to process in %(groups)d distinct "
-                   "context(s).") % {"count": len(plan.items),
-                                     "process": len(plan.to_process),
-                                     "groups": len(plan.groups)}]
-        for reason, count in sorted(skipped.items()):
-            parts.append(_("%(count)d skipped (%(reason)s).")
-                         % {"count": count, "reason": reasons.get(reason, reason)})
-        replaced = sum(1 for item in plan.to_process if item.has_note)
-        if replaced:
-            parts.append(_("%d existing note(s) will be replaced.") % replaced)
-        self.summary_label.set_text(" ".join(parts))
-
-        lines = []
-        for item in plan.items[:MAX_LISTED_PERSONS]:
-            lines.append("%s [%s]" % (item.facts.name, item.facts.gramps_id))
-            if item.skip_reason:
-                lines.append("    — %s" % reasons.get(item.skip_reason, item.skip_reason))
+                detail = _("will not be processed: %s") % reasons.get(item.skip_reason,
+                                                                       item.skip_reason)
+            elif item.has_note:
+                detail = _("its note will be replaced")
             else:
-                lines.extend("    %s" % line for line in self._request_lines(item.request))
-        if len(plan.items) > MAX_LISTED_PERSONS:
-            lines.append(_("... and %d more persons.") % (len(plan.items) - MAX_LISTED_PERSONS))
-        set_text(self.sent_view, "\n".join(lines))
-
-    @staticmethod
-    def _request_lines(request) -> List[str]:
-        """
-        Return the lines of a request as displayed.
-
-        Parameters
-        ----------
-        request : ContextRequest
-            Anonymized request.
-
-        Returns
-        -------
-        list of str
-            Landmarks and occupation.
-        """
-        lines = list(request.lines)
-        if request.occupation:
-            lines.append(_("Occupation: %s") % request.occupation)
-        return lines
+                detail = _("a note will be added")
+            self.summary_label.set_markup("%s — %s" % (name, html.escape(detail)))
+        else:
+            to_process = len(plan.to_process)
+            parts = [_("%(count)d persons, %(process)d to process.")
+                     % {"count": len(plan.items), "process": to_process}]
+            replaced = sum(1 for item in plan.to_process if item.has_note)
+            if replaced:
+                parts.append(_("%d note(s) will be replaced.") % replaced)
+            skipped = sum(plan.skipped().values())
+            if skipped:
+                parts.append(_("%d skipped (living, private, without landmark or with a "
+                               "note): see \"Data sent\".") % skipped)
+            self.summary_label.set_markup("<b>%s</b> %s" % (
+                html.escape(parts[0]), html.escape(" ".join(parts[1:]))))
+        self.generate_button.set_sensitive(not self.running and bool(plan.groups))
 
     # Options
 
     def _on_occupation_toggled(self, button: Gtk.CheckButton):
         """
-        Remember the occupation option and refresh the landmarks.
+        Remember the occupation option and refresh the summary.
 
         Parameters
         ----------
@@ -688,8 +733,8 @@ class StorytellerTool(tool.Tool, ManagedWindow):
                 self.correction_check.set_active(bool(self.settings["auto_correction"]))
                 self._update_model_label()
                 self._show_plan()
-        elif response_id == RESPONSE_PREVIEW:
-            self._start_preview()
+        elif response_id == RESPONSE_SENT_DATA:
+            self._show_sent_data()
         elif response_id == RESPONSE_GENERATE:
             self._start_generation()
         elif response_id == RESPONSE_STOP:
@@ -699,83 +744,27 @@ class StorytellerTool(tool.Tool, ManagedWindow):
             # The window manager close button is handled by ManagedWindow
             self.close()
 
-    def _start_preview(self):
+    def _show_sent_data(self):
         """
-        Collect the sources of the first context and show the full request.
+        Open the popup with the landmarks and the full request.
         """
-        if self.collecting:
+        if self.collecting or not self.facts_list:
             return
-        settings = self._run_settings()
-        plan = self._plan(settings)
-        if not plan.groups:
-            self._set_status(_("Nothing to send for these persons."))
+        if self.sent_dialog is not None:
+            self.sent_dialog.close()
+        self.sent_dialog = SentDataDialog(self.window, self._plan(), self._run_settings(),
+                                          _skip_reasons(), _request_lines)
+
+    def _show_result(self):
+        """
+        Open the popup with the result of the last run.
+        """
+        if self.batch_report is None or not self.batch_report.outcomes:
             return
-        group = plan.groups[0]
-
-        def progress(message: str):
-            GLib.idle_add(self._set_status, _("Working: %s") % message)
-
-        def work():
-            try:
-                pipeline = StoryPipeline(settings, should_stop=self.stop_event.is_set,
-                                         progress=progress)
-                result, error = pipeline.prepare(group.request), None
-            except Exception as exc:  # noqa: BLE001 - reported to the user
-                result, error = None, exc
-            GLib.idle_add(self._on_preview_done, result, error, group, len(plan.groups))
-
-        self._set_running(True)
-        self._set_status(_("Collecting the Wikipedia sources..."))
-        set_text(self.result_view, "")
-        threading.Thread(target=work, daemon=True).start()
-
-    def _on_preview_done(self, prepared, error: Optional[Exception], group: BatchGroup,
-                         group_count: int) -> bool:
-        """
-        Display the full request, in the GTK main loop.
-
-        Parameters
-        ----------
-        prepared : PreparedPrompt or None
-            Prompts and sources.
-        error : Exception or None
-            Error raised by the preview.
-        group : BatchGroup
-            Previewed context.
-        group_count : int
-            Number of contexts of the batch.
-
-        Returns
-        -------
-        bool
-            False, to run once.
-        """
-        if not self._is_open():
-            return False
-        self._set_running(False)
-        if isinstance(error, Cancelled):
-            self._set_status(_("Stopped."))
-            return False
-        if error is not None:
-            self._set_status(_("Failed."))
-            set_text(self.result_view, _("Error: %s") % error)
-            return False
-        parts = []
-        if group_count > 1:
-            parts.append(_("Request of the first context (%(name)s), out of %(count)d.")
-                         % {"name": group.items[0].facts.name, "count": group_count})
-        if prepared.sources.warnings:
-            parts.append(_("Warnings:") + "\n" + "\n".join(
-                "- %s" % w for w in prepared.sources.warnings))
-        richness = _("rich (general knowledge only for daily life)") if prepared.sources.rich \
-            else _("limited (marked general knowledge allowed)")
-        parts.append(_("Sources: %(count)d excerpt(s), %(richness)s.")
-                     % {"count": len(prepared.sources.extracts), "richness": richness})
-        parts.append("===== %s =====\n%s" % (_("System prompt"), prepared.system))
-        parts.append("===== %s =====\n%s" % (_("User message"), prepared.user))
-        set_text(self.result_view, "\n\n".join(parts))
-        self._set_status(_("Preview ready: nothing was sent to the LLM."))
-        return False
+        if self.result_dialog is not None:
+            self.result_dialog.close()
+        self.result_dialog = ResultDialog(self.window, self.batch_report,
+                                          MAX_CONSECUTIVE_ERRORS)
 
     def _confirm_batch(self, plan: BatchPlan, settings: Settings) -> bool:
         """
@@ -816,7 +805,7 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         """
         Generate the notes of the persons of the scope in a worker thread.
         """
-        if self.collecting:
+        if self.collecting or self.running:
             return
         if self.db.readonly:
             ErrorDialog(_("Read-only tree"), _("The family tree is opened read-only."),
@@ -825,7 +814,6 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         settings = self._run_settings()
         plan = self._plan(settings)
         if not plan.groups:
-            self._show_plan()
             self._set_status(_("Nothing to send for these persons."))
             return
         if len(plan.to_process) > 1 and not self._confirm_batch(plan, settings):
@@ -835,8 +823,7 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         self.batch_report = BatchReport()
         self.batch_total = len(plan.groups)
         self.batch_done = 0
-        self.batch_log = []
-        single = len(plan.to_process) == 1
+        single = len(plan.groups) == 1
 
         def progress(message: str):
             GLib.idle_add(self._set_status, _("Working: %s") % message)
@@ -848,7 +835,7 @@ class StorytellerTool(tool.Tool, ManagedWindow):
 
         def on_done(group: BatchGroup, result: Optional[GenerationResult],
                     error: Optional[Exception]):
-            GLib.idle_add(self._on_group_done, group, result, error, lang, single)
+            GLib.idle_add(self._on_group_done, group, result, error, lang)
 
         def work():
             try:
@@ -859,18 +846,20 @@ class StorytellerTool(tool.Tool, ManagedWindow):
                 error = None
             except Exception as exc:  # noqa: BLE001 - reported to the user
                 report, error = None, exc
-            GLib.idle_add(self._on_batch_done, report, error, single)
+            GLib.idle_add(self._on_batch_done, report, error)
 
+        if self.result_dialog is not None:
+            self.result_dialog.close()
+            self.result_dialog = None
+        self.result_button.hide()
         self._set_running(True)
-        if not single:
-            # The bar shows the processed contexts instead of pulsing
-            self._stop_pulse()
+        if single:
+            self._start_pulse()
         self._set_status(_("Collecting the Wikipedia sources..."))
-        set_text(self.result_view, "")
         threading.Thread(target=work, daemon=True).start()
 
     def _on_group_done(self, group: BatchGroup, result: Optional[GenerationResult],
-                       error: Optional[Exception], lang: str, single: bool) -> bool:
+                       error: Optional[Exception], lang: str) -> bool:
         """
         Write the notes of a group, in the GTK main loop.
 
@@ -884,8 +873,6 @@ class StorytellerTool(tool.Tool, ManagedWindow):
             Generation error.
         lang : str
             Language of the text.
-        single : bool
-            Whether only one person is processed (detailed display).
 
         Returns
         -------
@@ -896,14 +883,13 @@ class StorytellerTool(tool.Tool, ManagedWindow):
             return False
         report = self.batch_report
         self.batch_done += 1
-        self.progress.set_fraction(self.batch_done / max(self.batch_total, 1))
+        if self.pulse_id is None:
+            self.progress.set_fraction(self.batch_done / max(self.batch_total, 1))
 
         if error is not None:
-            report.failed += len(group.items)
             for item in group.items:
-                self.batch_log.append("✗ %s [%s] — %s" % (item.facts.name, item.facts.gramps_id,
-                                                          _("Error: %s") % error))
-            self._show_log()
+                report.add(PersonOutcome(name=item.facts.name, gramps_id=item.facts.gramps_id,
+                                         status=STATUS_FAILED, message=_("Error: %s") % error))
             return False
 
         validation = result.validation
@@ -914,99 +900,29 @@ class StorytellerTool(tool.Tool, ManagedWindow):
                                          result.provider_label, result.model, lang)
         for item in group.items:
             facts = item.facts
-            label = "%s [%s]" % (facts.name, facts.gramps_id)
+            outcome = PersonOutcome(
+                name=facts.name, gramps_id=facts.gramps_id, status=STATUS_NOT_WRITTEN,
+                warnings=list(warnings), corrected=list(validation.corrected_problems),
+                text=content.text if content is not None else result.text,
+                original_text=result.original_text, from_cache=result.from_cache,
+                llm_checked=validation.llm_checked, llm_problems=validation.llm_problems)
             if content is None:
-                report.not_written += 1
-                self.batch_log.append("✗ %s — %s" % (label, _("note not written: %s")
-                                                     % "; ".join(validation.errors)))
-                continue
-            try:
-                _handle, replaced = write_story_note(self.db, facts.handle, content, facts.name)
-            except Exception as exc:  # noqa: BLE001 - reported to the user
-                report.failed += 1
-                self.batch_log.append("✗ %s — %s" % (
-                    label, _("Error while writing the note: %s") % exc))
-                continue
-            if replaced:
-                report.replaced += 1
-                status = _("note replaced")
+                outcome.message = "; ".join(validation.errors)
             else:
-                report.created += 1
-                status = _("note added")
-            if warnings:
-                report.with_warnings += 1
-                status += " " + _("(%d warning(s))") % len(warnings)
-            self.batch_log.append("✓ %s — %s" % (label, status))
-        if not single:
-            self.batch_log.extend("      %s" % w for w in warnings)
-        if validation.corrected_problems and not single:
-            self.batch_log.append("      " + _("Automatic correction of %d problem(s).")
-                                  % len(validation.corrected_problems))
-
-        if single:
-            self._show_single_result(group, result, content)
-        else:
-            self._show_log()
+                try:
+                    _handle, replaced = write_story_note(self.db, facts.handle, content,
+                                                         facts.name)
+                    outcome.status = STATUS_REPLACED if replaced else STATUS_ADDED
+                except Exception as exc:  # noqa: BLE001 - reported to the user
+                    outcome.status = STATUS_FAILED
+                    outcome.message = _("Error while writing the note: %s") % exc
+            report.add(outcome)
         return False
 
-    def _show_log(self):
+    def _on_batch_done(self, run_report: Optional[BatchReport],
+                       error: Optional[Exception]) -> bool:
         """
-        Display the log of the batch, most recent last.
-        """
-        set_text(self.result_view, "\n".join(self.batch_log))
-        buffer = self.result_view.get_buffer()
-        self.result_view.scroll_to_iter(buffer.get_end_iter(), 0.0, False, 0.0, 1.0)
-
-    def _show_single_result(self, group: BatchGroup, result: GenerationResult, content):
-        """
-        Display the detailed result of a single person.
-
-        Parameters
-        ----------
-        group : BatchGroup
-            Processed group.
-        result : GenerationResult
-            Generation result.
-        content : NoteContent or None
-            Written note, None when it was not written.
-        """
-        report = result.validation
-        facts = group.items[0].facts
-        lines = list(self.batch_log)
-        if not report.ok:
-            lines.append(_("Errors:"))
-            lines.extend("- %s" % e for e in report.errors)
-        if result.from_cache:
-            lines.append(_("Text taken from the cache (tick \"Regenerate\" to call the LLM)."))
-        if report.corrected_problems:
-            lines.append(_("Automatic correction: the text was rewritten to fix these "
-                           "problems:"))
-            lines.extend("- %s" % p for p in report.corrected_problems)
-        warnings = result.sources.warnings + report.warnings
-        if warnings:
-            lines.append(_("Warnings after correction:") if report.corrected_problems
-                         else _("Warnings:"))
-            lines.extend("- %s" % w for w in warnings)
-        if report.llm_checked and not report.llm_problems:
-            lines.append(_("LLM validation: no problem found."))
-        lines.append("")
-        lines.append(content.text if content is not None else result.text)
-        if result.original_text is not None:
-            lines.append("")
-            lines.append("===== %s =====" % _("Text before the automatic correction"))
-            lines.append(result.original_text)
-        set_text(self.result_view, "\n".join(lines))
-        if content is None:
-            self._set_status(_("The note was not written."))
-        elif self.batch_report.replaced:
-            self._set_status(_("The note of %s was replaced.") % facts.name)
-        else:
-            self._set_status(_("A note was added to %s.") % facts.name)
-
-    def _on_batch_done(self, run_report: Optional[BatchReport], error: Optional[Exception],
-                       single: bool) -> bool:
-        """
-        Show the final report of a run, in the GTK main loop.
+        End a run and open the result popup, in the GTK main loop.
 
         Parameters
         ----------
@@ -1014,8 +930,6 @@ class StorytellerTool(tool.Tool, ManagedWindow):
             Cancellation and abort information.
         error : Exception or None
             Error that stopped the run before the first group.
-        single : bool
-            Whether only one person was processed.
 
         Returns
         -------
@@ -1028,35 +942,16 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         report = self.batch_report
         if error is not None:
             self._set_status(_("Failed."))
-            set_text(self.result_view, _("Error: %s") % error)
+            ErrorDialog(_("The generation failed"), str(error), parent=self.window)
             return False
         report.cancelled = run_report.cancelled
         report.aborted = run_report.aborted
-        if single and not (report.cancelled or report.aborted or report.failed):
-            # The detailed result is already displayed
-            self._refresh_notes()
-            return False
-
-        summary = [_("Notes added: %(created)d — replaced: %(replaced)d — not written: "
-                     "%(not_written)d — errors: %(failed)d.")
-                   % {"created": report.created, "replaced": report.replaced,
-                      "not_written": report.not_written, "failed": report.failed}]
-        if report.with_warnings:
-            summary.append(_("%d note(s) written with warnings: review them.")
-                           % report.with_warnings)
-        if report.aborted:
-            summary.append(_("Stopped after %(count)d failures in a row: %(error)s")
-                           % {"count": MAX_CONSECUTIVE_ERRORS, "error": report.aborted})
-            self._set_status(_("Stopped after repeated errors."))
-        elif report.cancelled:
-            summary.append(_("Stopped by the user: the remaining persons were not processed."))
-            self._set_status(_("Stopped."))
-        else:
-            self._set_status(_("Done."))
-        self.batch_log.append("")
-        self.batch_log.extend(summary)
-        self._show_log()
+        self._set_status(" ".join(report_summary(report, MAX_CONSECUTIVE_ERRORS)))
         self._refresh_notes()
+        self._show_plan()
+        if report.outcomes:
+            self.result_button.show()
+            self._show_result()
         return False
 
     def _refresh_notes(self):
@@ -1068,7 +963,7 @@ class StorytellerTool(tool.Tool, ManagedWindow):
 
     def close(self, *obj):
         """
-        Stop the running request and close the window.
+        Stop the running request and close the window and its popups.
         """
         self.stop_event.set()
         self.refresh_serial += 1
@@ -1076,6 +971,9 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         if self.refresh_timer is not None:
             GLib.source_remove(self.refresh_timer)
             self.refresh_timer = None
+        for popup in (self.sent_dialog, self.result_dialog):
+            if popup is not None:
+                popup.close()
         ManagedWindow.close(self, *obj)
 
 

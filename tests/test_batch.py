@@ -123,3 +123,17 @@ def test_isolated_errors_do_not_abort():
                        lambda group, result, error: outcomes.append(error is None))
     assert outcomes == [True, False, True, False, True, True]
     assert report.aborted is None
+
+
+def test_report_counts_the_outcomes():
+    from storyteller.batch import (
+        STATUS_ADDED, STATUS_FAILED, STATUS_NOT_WRITTEN, STATUS_REPLACED, BatchReport,
+        PersonOutcome)
+    report = BatchReport()
+    report.add(PersonOutcome("a", "I1", STATUS_ADDED, warnings=["w"]))
+    report.add(PersonOutcome("b", "I2", STATUS_REPLACED))
+    report.add(PersonOutcome("c", "I3", STATUS_NOT_WRITTEN, warnings=["w"]))
+    report.add(PersonOutcome("d", "I4", STATUS_FAILED, message="boom"))
+    assert (report.created, report.replaced, report.not_written, report.failed) == (1, 1, 1, 1)
+    assert report.with_warnings == 1
+    assert [o.written for o in report.outcomes] == [True, True, False, False]
