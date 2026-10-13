@@ -54,22 +54,24 @@ LEVEL_NAMES = {
 
 _TEXTS = {
     "fr": {
-        "occupation": "Métier à mettre aussi en contexte (sans l'attribuer à une personne) : %s",
-        "rich": "Les extraits sont suffisamment riches : n'utilise aucune connaissance générale "
-                "extérieure et appuie chaque affirmation sur un extrait numéroté.",
+        "occupation": "Métier courant dans ces lieux, à décrire dans le paragraphe sur la vie "
+                      "quotidienne (sans l'attribuer à quelqu'un) : %s",
+        "rich": "Les extraits sont riches : les paragraphes 1 et 2 reposent uniquement sur eux. "
+                "Les connaissances générales, balisées <cg>, ne sont admises que pour la vie "
+                "quotidienne (paragraphe 3).",
         "poor": "Les extraits sont limités : tu peux les compléter par des connaissances "
-                "historiques générales bien établies, en les réduisant au strict nécessaire et en "
-                "encadrant chaque phrase concernée par <cg> et </cg>. Privilégie toujours les "
-                "extraits quand ils couvrent le sujet.",
+                "historiques générales bien établies, réduites au strict nécessaire et balisées "
+                "<cg>. Privilégie toujours les extraits quand ils couvrent le sujet.",
         "no_source": "(aucun extrait disponible)",
     },
     "en": {
-        "occupation": "Occupation to put in context too (without attributing it to anyone): %s",
-        "rich": "The excerpts are rich enough: do not use any outside general knowledge and base "
-                "every statement on a numbered excerpt.",
+        "occupation": "Common occupation in these places, to describe in the daily life "
+                      "paragraph (without attributing it to anyone): %s",
+        "rich": "The excerpts are rich: paragraphs 1 and 2 rely on them only. General knowledge, "
+                "wrapped in <cg>, is only allowed for daily life (paragraph 3).",
         "poor": "The excerpts are limited: you may complete them with well-established general "
-                "historical knowledge, kept to the strict minimum, wrapping every such sentence "
-                "in <cg> and </cg>. Always prefer the excerpts when they cover the subject.",
+                "historical knowledge, kept to the strict minimum and wrapped in <cg>. Always "
+                "prefer the excerpts when they cover the subject.",
         "no_source": "(no excerpt available)",
     },
 }

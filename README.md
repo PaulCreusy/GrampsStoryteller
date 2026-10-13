@@ -76,9 +76,14 @@ broadest level, because small communes rarely have a detailed history:
    Republic), or the history article of a foreign country.
 
 Only the paragraphs of the history sections that match the years are kept. When
-the local sources are rich, the LLM is told not to use any outside knowledge;
-otherwise it may add well-established general knowledge, which is shown in
-italics with the mention *general knowledge, unsourced*.
+the local sources are rich, the LLM may only use outside knowledge for the daily
+life paragraph; otherwise it may add well-established general knowledge anywhere.
+General knowledge is shown in italics, with a one-line legend.
+
+The text has three short paragraphs, from the general to the particular: the
+national and regional context, the local context, then the daily life of an
+inhabitant (housing, food, work, religion...). Sources are not cited inline: they
+are listed at the end of the note.
 
 ## Note
 

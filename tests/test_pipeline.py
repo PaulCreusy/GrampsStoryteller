@@ -121,7 +121,7 @@ def test_custom_prompts_are_used(isolated_dirs):
     provider = FakeProvider(["ok"])
     StoryPipeline(settings, cache=DiskCache(None), wiki_client=FakeWikipedia(PAGES),
                   provider=provider).generate(_request())
-    assert provider.prompts[0][1] == ("R=- 1832 – Brest (Finistère, France) L=français N=400 "
+    assert provider.prompts[0][1] == ("R=- 1832 – Brest (Finistère, France) L=français N=250 "
                                       "J={\"json\": 1}")
 
 

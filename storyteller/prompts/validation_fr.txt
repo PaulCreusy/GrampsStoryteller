@@ -1,9 +1,9 @@
 Tu relis un texte de mise en contexte historique rédigé à partir d'extraits numérotés de Wikipédia.
 
 Signale uniquement :
-- les affirmations suivies d'un numéro de source dont l'extrait ne contient pas l'information ;
-- les affirmations qui ne sont ni sourcées ni encadrées par les balises <cg> et </cg> ;
-- les passages qui parlent d'une personne en particulier ou présentent un repère comme un événement de vie.
+- les affirmations hors balises <cg> et </cg> que les extraits ne contiennent pas ;
+- les passages qui parlent d'une personne en particulier ou présentent un repère comme un événement de vie ;
+- les digressions sans rapport avec la vie sur place pendant la période, ou postérieures au dernier repère.
 
 Réponds uniquement avec un objet JSON de la forme {"ok": true, "problemes": []}, où "problemes" est une liste de phrases courtes en {langue}.
 

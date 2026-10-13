@@ -165,7 +165,8 @@ def test_note_is_created_then_replaced(empty_db):
     person = db.get_person_from_handle(person.get_handle())
     assert person.get_note_list() == [handle]
     note = db.get_note_from_handle(handle)
-    assert note.get().startswith("Second général [connaissance générale")
+    assert note.get().startswith("Second général.")
+    assert "En italique : connaissances générales" in note.get()
     assert db.get_tag_from_name(TAG_NAME).get_handle() in note.get_tag_list()
     assert note.get_type().xml_str() == "Life story"
     tags = note.get_styledtext().get_tags()

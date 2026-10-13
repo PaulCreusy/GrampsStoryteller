@@ -293,8 +293,8 @@ def select_paragraphs(sections: List[Section], low: Optional[int], high: Optiona
 
     A paragraph mentioning dates is kept when one of them intersects the
     period. A paragraph without date is kept when its heading covers the
-    period, or when it follows a kept paragraph in a section whose heading
-    gives no period.
+    period, or when it directly follows a kept dated paragraph in a section
+    whose heading gives no period (undated paragraphs do not chain).
 
     Parameters
     ----------
@@ -318,7 +318,7 @@ def select_paragraphs(sections: List[Section], low: Optional[int], high: Optiona
         heading = era_spans(section.title)
         heading_known = bool(heading)
         heading_relevant = low is None or (heading_known and overlaps(heading, low, high))
-        previous_kept = False
+        previous_dated_kept = False
         title_written = False
         for paragraph in section.paragraphs:
             if low is None:
@@ -330,8 +330,8 @@ def select_paragraphs(sections: List[Section], low: Optional[int], high: Optiona
                 elif heading_known:
                     keep = heading_relevant
                 else:
-                    keep = previous_kept
-            previous_kept = keep
+                    keep = previous_dated_kept
+                previous_dated_kept = bool(spans) and keep
             if not keep:
                 continue
             title = "— %s —" % section.title if section.title and not title_written else ""

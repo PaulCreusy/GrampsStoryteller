@@ -34,7 +34,7 @@ DEFAULTS: Dict[str, Any] = {
     "send_temperature": True,
     "max_tokens": 8000,
     "language": "fr",
-    "length_words": 400,
+    "length_words": 250,
     "include_occupation": False,
     "llm_validation": False,
     # None means "use the default prompt of the language"

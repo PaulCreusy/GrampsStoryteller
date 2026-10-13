@@ -33,11 +33,8 @@ _MESSAGES = {
         "empty": "Le texte généré est vide.",
         "truncated": "Le texte a été tronqué par la limite de tokens : augmentez « Tokens max ».",
         "unknown_ref": "Références à des sources inexistantes : %s.",
-        "no_ref": "Le texte ne cite aucune source.",
         "unbalanced": "Balises <cg> mal fermées : le marquage des connaissances générales est "
                       "approximatif.",
-        "cg_rich": "%d passage(s) de connaissances générales alors que les sources étaient "
-                   "jugées riches.",
         "cg_count": "%d passage(s) de connaissances générales (non sourcées), signalés en "
                     "italique dans la note.",
         "years": "Années citées comme sourcées mais absentes des extraits : %s.",
@@ -49,9 +46,7 @@ _MESSAGES = {
         "empty": "The generated text is empty.",
         "truncated": "The text was cut by the token limit: increase \"Max tokens\".",
         "unknown_ref": "References to missing sources: %s.",
-        "no_ref": "The text cites no source.",
         "unbalanced": "Unbalanced <cg> tags: the general knowledge marking is approximate.",
-        "cg_rich": "%d general knowledge passage(s) although the sources were considered rich.",
         "cg_count": "%d general knowledge passage(s) (unsourced), shown in italics in the note.",
         "years": "Years cited as sourced but missing from the excerpts: %s.",
         "url": "The text contained URLs, they were removed.",
@@ -204,12 +199,8 @@ def check_locally(text: str, source_count: int, sources_text: str, allowed_years
     unknown = sorted(n for n in numbers if n < 1 or n > source_count)
     if unknown:
         report.warnings.append(texts["unknown_ref"] % ", ".join("[%d]" % n for n in unknown))
-    if source_count and not numbers:
-        report.warnings.append(texts["no_ref"])
-
     if general:
-        key = "cg_rich" if rich else "cg_count"
-        report.warnings.append(texts[key] % len(general))
+        report.warnings.append(texts["cg_count"] % len(general))
 
     source_years = {int(y) for y in _YEAR.findall(sources_text)} | set(allowed_years)
     missing = sorted({int(y) for y in _YEAR.findall(sourced)} - source_years)

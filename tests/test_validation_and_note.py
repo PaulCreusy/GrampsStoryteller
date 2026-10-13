@@ -40,7 +40,7 @@ def test_local_checks_find_problems():
     assert "[5]" in joined
     assert "1847" in joined
     assert "1848" not in joined  # general knowledge years are not checked
-    assert "jugées riches" in joined
+    assert "1 passage(s) de connaissances générales" in joined
     assert "tronqué" in joined
 
 
@@ -67,7 +67,11 @@ def test_note_content():
         sources, "OpenAI", "gpt-5-mini", "fr", datetime.date(2026, 10, 11))
 
     assert "https://x.y" not in content.text
-    assert "La France est un royaume. [connaissance générale, non sourcée]" in content.text
+    assert "La France est un royaume." in content.text
+    assert "connaissance générale" not in content.text.split("\n")[0]
+    assert "En italique : connaissances générales" in content.text
+    italic = [content.text[s:e] for kind, _v, s, e in content.tags if kind == "italic"]
+    assert "La France est un royaume." in italic
     assert "[1] Plouguerneau (commune) — https://fr.wikipedia.org" in content.text
     assert "Bretagne (province historique)" not in content.text  # not cited
     assert content.text.endswith("Généré le 11/10/2026 — OpenAI · gpt-5-mini")
@@ -78,3 +82,8 @@ def test_note_content():
             assert content.text[start:end] == value
         if kind == "bold":
             assert content.text[start:end] == "Sources"
+
+
+def test_no_legend_without_general_knowledge():
+    content = build_note_content("Texte sourcé.", [], "OpenAI", "m", "fr")
+    assert "En italique" not in content.text

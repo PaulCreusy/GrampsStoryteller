@@ -28,13 +28,13 @@ Tag = Tuple[str, Optional[str], int, int]
 
 _TEXTS = {
     "fr": {
-        "general": " [connaissance générale, non sourcée]",
+        "legend": "En italique : connaissances générales, non issues des sources ci-dessous.",
         "sources": "Sources",
         "footer": "Généré le %s — %s · %s",
         "date": "%d/%m/%Y",
     },
     "en": {
-        "general": " [general knowledge, unsourced]",
+        "legend": "In italics: general knowledge, not taken from the sources below.",
         "sources": "Sources",
         "footer": "Generated on %s — %s · %s",
         "date": "%Y-%m-%d",
@@ -137,16 +137,21 @@ def build_note_content(text: str, sources: List[SourceExtract], provider_label: 
     content = NoteContent()
 
     segments, _balanced = split_general_knowledge(_clean(text))
+    has_general = False
     for segment, is_general in segments:
-        if is_general:
+        if is_general and segment.strip():
+            has_general = True
             stripped = segment.strip()
             leading = segment[:len(segment) - len(segment.lstrip())]
             trailing = segment[len(segment.rstrip()):]
             content.append(leading)
-            content.append(stripped + texts["general"], "italic")
+            content.append(stripped, "italic")
             content.append(trailing)
         else:
             content.append(segment)
+    if has_general:
+        content.append("\n\n")
+        content.append(texts["legend"], "italic")
 
     cited = cited_numbers(text)
     listed = [s for s in sources if s.number in cited] or list(sources)

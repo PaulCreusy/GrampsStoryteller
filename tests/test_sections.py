@@ -33,6 +33,10 @@ Les prêtres réfractaires s'y cachent.
 En 1832, le choléra frappe la commune.
 Les habitants vivent de la pêche et de l'agriculture.
 En 1960, le port est modernisé.
+=== Époque récente ===
+En 1880, une école est ouverte.
+Un phare est construit.
+La commune fusionne ensuite avec sa voisine.
 
 == Personnalités liées à la commune ==
 Personne célèbre née en 1850.
@@ -49,7 +53,7 @@ def test_parse_and_history_sections():
     assert sections[0].paragraphs[0].startswith("Plouguerneau")
     titles = [s.title for s in history_sections(sections)]
     assert titles == ["Histoire", "Moyen Âge", "Époque moderne", "Révolution française",
-                      "XIXe siècle"]
+                      "XIXe siècle", "Époque récente"]
 
 
 def test_time_spans():
@@ -89,3 +93,11 @@ def test_budget_is_respected():
     text = select_paragraphs(sections, None, None, 60)
     assert len(text) <= 60
     assert lead_text(parse_sections(ARTICLE), 1000).startswith("Plouguerneau")
+
+
+def test_undated_paragraphs_do_not_chain():
+    sections = history_sections(parse_sections(ARTICLE))
+    text = select_paragraphs(sections, 1813, 1891, 5000)
+    assert "école" in text
+    assert "phare" in text
+    assert "fusionne" not in text
