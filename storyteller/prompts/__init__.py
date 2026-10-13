@@ -15,6 +15,7 @@ left untouched.
 from __future__ import annotations
 
 import os
+import re
 from typing import Dict, List, Optional
 
 # Local imports #
@@ -139,7 +140,8 @@ def render(template: str, variables: Dict[str, str]) -> str:
     for name in VARIABLES:
         if name in variables:
             text = text.replace("{%s}" % name, variables[name])
-    return text
+    # An empty variable (e.g. no occupation) must not leave blank lines
+    return re.sub(r"\n{3,}", "\n\n", text)
 
 
 def format_sources(extracts: List[SourceExtract], lang: str) -> str:

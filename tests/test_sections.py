@@ -114,3 +114,15 @@ def test_broad_headings_do_not_keep_undated_paragraphs():
     assert "forges" in text
     assert "fusion" not in text
     assert "1920" in text
+
+
+def test_bibliographic_references_are_dropped():
+    article = ("Intro.\n== Histoire ==\n=== Contemporaine ===\n"
+               "Vincent Petit, Catholiques et Comtois. Liturgie diocésaine et identité régionale "
+               "au XIXe siècle, Cerf, 2011\n"
+               "Au XIXe siècle, la région compte de nombreuses filatures et la population "
+               "ouvrière augmente fortement dans les vallées, notamment autour des forges, "
+               "selon les recensements publiés en 1891.\n")
+    text = select_paragraphs(history_sections(parse_sections(article)), 1878, 1924, 5000)
+    assert "Cerf" not in text
+    assert "filatures" in text

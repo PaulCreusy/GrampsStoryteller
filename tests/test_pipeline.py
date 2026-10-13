@@ -84,6 +84,7 @@ def test_generation_uses_sources_and_cache(isolated_dirs):
     assert "Anne" not in user + system and "I7" not in user + system
     assert "29200" not in user
     assert "{" not in user.replace("{}", "")
+    assert "\n\n\n" not in user
     assert result.validation.ok
     assert not result.from_cache
     assert result.sources.extracts[0].number == 1

@@ -28,6 +28,9 @@ _YEAR = re.compile(r"(?<![\d.,])(1[0-9]{3}|20[0-9]{2})(?!\d)")
 _ROMAN_CENTURY = re.compile(r"\b([IVXL]{1,6})(?:e|ᵉ|er|ème|eme)\b")
 _EN_CENTURY = re.compile(r"\b(\d{1,2})(?:st|nd|rd|th)[\s-]+centur", re.IGNORECASE)
 _EN_DECADE = re.compile(r"\b(1[0-9]{2}|20[0-9])0s\b")
+# Bibliographic references left in history sections ("Author, Title, Publisher, 2011")
+_REFERENCE = re.compile(r"(ISBN|\bp\.\s?\d|\bpp?\.\s|,\s*(1[5-9]|20)\d{2}\s*[.)]?\s*$)")
+MAX_REFERENCE_WORDS = 30
 
 _HISTORY_TITLES = ("histoire", "historique", "history")
 
@@ -85,6 +88,7 @@ _ERAS: List[Tuple[str, Span]] = [
     ("post war", (1945, 1960)),
     ("epoque contemporaine", (1789, 2100)),
     ("periode contemporaine", (1789, 2100)),
+    ("contemporaine", (1789, 2100)),
     ("contemporary", (1789, 2100)),
     ("modern", (1789, 2100)),
 ]
@@ -270,6 +274,23 @@ def overlaps(spans: List[Span], low: int, high: int) -> bool:
     return any(start <= high and end >= low for start, end in spans)
 
 
+def looks_like_reference(paragraph: str) -> bool:
+    """
+    Tell whether a paragraph is a bibliographic reference rather than prose.
+
+    Parameters
+    ----------
+    paragraph : str
+        Paragraph.
+
+    Returns
+    -------
+    bool
+        True for short lines such as "Author, Title, Publisher, 2011".
+    """
+    return len(paragraph.split()) <= MAX_REFERENCE_WORDS and bool(_REFERENCE.search(paragraph))
+
+
 def _fit(paragraph: str, budget: int) -> str:
     """
     Cut a paragraph at a sentence end so that it fits the budget.
@@ -328,6 +349,8 @@ def select_paragraphs(sections: List[Section], low: Optional[int], high: Optiona
         previous_dated_kept = False
         title_written = False
         for paragraph in section.paragraphs:
+            if looks_like_reference(paragraph):
+                continue
             if low is None:
                 keep = True
             else:

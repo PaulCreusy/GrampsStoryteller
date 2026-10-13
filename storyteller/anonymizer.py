@@ -221,4 +221,4 @@ def period_bounds(request: ContextRequest):
         return None, None
     if request.year_min == request.year_max:
         return request.year_min - 30, request.year_max + 30
-    return request.year_min - 10, request.year_max
+    return request.year_min - 5, request.year_max

@@ -67,6 +67,6 @@ def test_year_formats():
 
 
 def test_period_bounds():
-    assert period_bounds(ContextRequest(lines=[], year_min=1800, year_max=1870)) == (1790, 1870)
+    assert period_bounds(ContextRequest(lines=[], year_min=1800, year_max=1870)) == (1795, 1870)
     assert period_bounds(ContextRequest(lines=[], year_min=1800, year_max=1800)) == (1770, 1830)
     assert period_bounds(ContextRequest(lines=[])) == (None, None)

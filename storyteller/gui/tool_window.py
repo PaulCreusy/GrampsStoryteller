@@ -463,8 +463,8 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         if prepared.sources.warnings:
             parts.append(_("Warnings:") + "\n" + "\n".join(
                 "- %s" % w for w in prepared.sources.warnings))
-        richness = _("rich (general knowledge forbidden)") if prepared.sources.rich else _(
-            "limited (general knowledge allowed if marked)")
+        richness = _("rich (general knowledge only for daily life)") if prepared.sources.rich \
+            else _("limited (marked general knowledge allowed)")
         parts.append(_("Sources: %(count)d excerpt(s), %(richness)s.")
                      % {"count": len(prepared.sources.extracts), "richness": richness})
         parts.append("===== %s =====\n%s" % (_("System prompt"), prepared.system))

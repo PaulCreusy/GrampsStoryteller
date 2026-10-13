@@ -121,7 +121,7 @@ def test_thin_department_history_uses_the_history_article():
         "Haute-Saône": "La Haute-Saône est un département français.\n== Histoire ==\n"
                        "Le département est créé en 1790.",
         "Histoire de la Haute-Saône": "Intro.\n== Époque contemporaine ==\n"
-                                      "En 1871, de nombreux Alsaciens s'installent dans le "
+                                      "En 1880, de nombreux Alsaciens s'installent dans le "
                                       "département.\n== Moyen Âge ==\nEn 1200, des abbayes.",
         "Franche-Comté (province)": "La Franche-Comté est une province de France.\n"
                                     "== Histoire ==\n=== XXe siècle et XXIe siècle ===\n"
@@ -133,7 +133,7 @@ def test_thin_department_history_uses_the_history_article():
     by_title = {e.title: e for e in result.extracts}
     assert "Haute-Saône" not in by_title  # its history has nothing for the period
     assert by_title["Histoire de la Haute-Saône"].level == "department"
-    assert "1871" in by_title["Histoire de la Haute-Saône"].text
+    assert "1880" in by_title["Histoire de la Haute-Saône"].text
     assert "1200" not in by_title["Histoire de la Haute-Saône"].text
     assert not any("fusion" in e.text for e in result.extracts)
     assert "Belle Époque" in wiki.requested
