@@ -10,7 +10,8 @@ Mandatory rules:
 2. The landmarks are only years and places: never present them as a birth, a marriage, a death or any other event, and do not comment on them.
 3. No digression: only mention what helps picture life there during the period, and no event after the last landmark.
 4. Do not invent anything. Paragraphs 1 and 2 rely on the excerpts. Respect the geographic level of each excerpt: a fact about a department, a province or a country must not be attributed to the town.
-5. Every sentence that does not come from the excerpts must be well-established historical knowledge and be wrapped in <cg> and </cg> tags.
-6. Do not cite the sources in the text (no numbers in square brackets): the source list is added automatically at the end.
-7. If the sources say nothing about an aspect, do not fill the gap with assumptions: leave it out.
-8. Write three paragraphs of continuous text, without title, list, markdown or URL.
+5. Do not draw from the excerpts any conclusion they do not state (a nickname does not prove an economic activity) and do not change their meaning when rephrasing (a regime described as lasting is not "unstable").
+6. Every sentence that does not come from the excerpts must be well-established historical knowledge and be wrapped in <cg> and </cg> tags. For daily life, stay general and cautious: only state traits widely attested for the region and the period, without precise details you could not justify.
+7. Do not cite the sources in the text (no numbers in square brackets): the source list is added automatically at the end.
+8. If the sources say nothing about an aspect, do not fill the gap with assumptions: leave it out.
+9. Write three paragraphs of continuous text, without title, list, markdown or URL.

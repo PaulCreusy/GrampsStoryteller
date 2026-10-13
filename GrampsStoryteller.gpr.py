@@ -24,7 +24,7 @@ register(
     name=_("Storyteller: historical context"),
     description=_("Writes, in a note, the sourced historical context of the places and "
                   "periods where a person lived, without sending any identifying data."),
-    version="0.2.2",
+    version="0.2.3",
     gramps_target_version=major_version,
     status=STABLE,
     fname="GrampsStoryteller.py",

@@ -10,7 +10,8 @@ Règles impératives :
 2. Les repères ne sont que des années et des lieux : ne les présente jamais comme une naissance, un mariage, un décès ou tout autre événement, et ne les commente pas.
 3. Pas de digression : n'évoque que ce qui aide à se représenter la vie sur place pendant la période, et aucun événement postérieur au dernier repère.
 4. N'invente rien. Les paragraphes 1 et 2 s'appuient sur les extraits. Respecte le niveau géographique de chaque extrait : un fait qui concerne un département, une province ou un pays ne doit pas être attribué à la commune.
-5. Toute phrase qui ne vient pas des extraits doit être une connaissance historique bien établie et être encadrée par les balises <cg> et </cg>.
-6. Ne cite pas les sources dans le texte (pas de numéros entre crochets) : la liste des sources est ajoutée automatiquement à la fin.
-7. Si les sources ne disent rien d'un aspect, ne comble pas le vide par des suppositions : omets-le.
-8. Écris trois paragraphes de texte continu, sans titre, sans liste, sans markdown et sans URL.
+5. Ne tire des extraits aucune conclusion qu'ils n'énoncent pas (un surnom ne prouve pas une activité économique) et ne change pas leur sens en les reformulant (un régime décrit comme durable n'est pas « instable »).
+6. Toute phrase qui ne vient pas des extraits doit être une connaissance historique bien établie et être encadrée par les balises <cg> et </cg>. Pour la vie quotidienne, reste général et prudent : n'avance que des traits largement attestés pour la région et l'époque, sans détail précis que tu ne pourrais pas justifier.
+7. Ne cite pas les sources dans le texte (pas de numéros entre crochets) : la liste des sources est ajoutée automatiquement à la fin.
+8. Si les sources ne disent rien d'un aspect, ne comble pas le vide par des suppositions : omets-le.
+9. Écris trois paragraphes de texte continu, sans titre, sans liste, sans markdown et sans URL.
