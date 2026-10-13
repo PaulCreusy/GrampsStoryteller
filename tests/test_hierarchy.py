@@ -112,3 +112,28 @@ def test_poor_sources_are_not_rich():
     place = PlaceInfo(name="Inconnu", country="France", code="29000")
     result = SourceCollector(wiki).collect(_request(place))
     assert not result.rich
+
+
+def test_thin_department_history_uses_the_history_article():
+    pages = {
+        "Conflandey (Haute-Saône)": "Conflandey est une commune de la Haute-Saône.\n"
+                                    "== Histoire ==\nEn 1897, la papeterie devient une tréfilerie.",
+        "Haute-Saône": "La Haute-Saône est un département français.\n== Histoire ==\n"
+                       "Le département est créé en 1790.",
+        "Histoire de la Haute-Saône": "Intro.\n== Époque contemporaine ==\n"
+                                      "En 1871, de nombreux Alsaciens s'installent dans le "
+                                      "département.\n== Moyen Âge ==\nEn 1200, des abbayes.",
+        "Franche-Comté (province)": "La Franche-Comté est une province de France.\n"
+                                    "== Histoire ==\n=== XXe siècle et XXIe siècle ===\n"
+                                    "Cette fusion sera mal perçue par la population.",
+    }
+    wiki = FakeWikipedia(pages)
+    place = PlaceInfo(name="Conflandey", country="France", code="70170")
+    result = SourceCollector(wiki).collect(_request(place, years=(1878, 1924)))
+    by_title = {e.title: e for e in result.extracts}
+    assert "Haute-Saône" not in by_title  # its history has nothing for the period
+    assert by_title["Histoire de la Haute-Saône"].level == "department"
+    assert "1871" in by_title["Histoire de la Haute-Saône"].text
+    assert "1200" not in by_title["Histoire de la Haute-Saône"].text
+    assert not any("fusion" in e.text for e in result.extracts)
+    assert "Belle Époque" in wiki.requested

@@ -52,6 +52,10 @@ DEFAULT_BUDGETS: Dict[str, int] = {
 # are considered rich enough to forbid general knowledge
 DEFAULT_RICH_THRESHOLD = 1500
 
+# Below this length, the history section of an administrative entity is
+# completed by its dedicated history article (e.g. "Histoire de la Haute-Saône")
+MIN_HISTORY_CHARS = 400
+
 # Year at which the current French regions were created
 CURRENT_REGIONS_YEAR = 2016
 
@@ -68,7 +72,9 @@ FRANCE_PERIODS: List[Tuple[int, int, str, str]] = [
     (1852, 1870, "Second Empire", "Second French Empire"),
     (1870, 1871, "Guerre franco-allemande de 1870", "Franco-Prussian War"),
     (1870, 1940, "Troisième République (France)", "French Third Republic"),
+    (1871, 1914, "Belle Époque", "Belle Époque"),
     (1914, 1918, "Première Guerre mondiale", "World War I"),
+    (1919, 1939, "Entre-deux-guerres", "Interwar period"),
     (1939, 1945, "Seconde Guerre mondiale", "World War II"),
     (1940, 1944, "Régime de Vichy", "Vichy France"),
     (1944, 1946, "Gouvernement provisoire de la République française",
@@ -103,7 +109,7 @@ _ADMIN_KEYWORDS = {
     },
 }
 
-_COUNTRY_HISTORY = {
+_HISTORY_ARTICLES = {
     "fr": ["Histoire de {}", "Histoire de la {}", "Histoire de l'{}", "Histoire du {}",
            "Histoire des {}"],
     "en": ["History of {}", "History of the {}"],
@@ -190,23 +196,23 @@ class SourceCollector:
 
             if department:
                 page = self._find_admin(department, LEVEL_DEPARTMENT, place.country)
-                self._add_history(page, LEVEL_DEPARTMENT, low, high, seen, result)
+                self._add_history(page, department, LEVEL_DEPARTMENT, low, high, seen, result)
 
             if in_france and dep_code:
                 province = fr_admin.province_name(dep_code, self.lang)
                 page = self._find_admin(province, LEVEL_PROVINCE, None)
-                self._add_history(page, LEVEL_PROVINCE, low, high, seen, result)
+                self._add_history(page, province, LEVEL_PROVINCE, low, high, seen, result)
                 if high is not None and high >= CURRENT_REGIONS_YEAR:
                     region = fr_admin.region_name(dep_code, self.lang)
                     if region and region != province:
                         page = self._find_admin(region, LEVEL_REGION, None)
-                        self._add_history(page, LEVEL_REGION, low, high, seen, result)
+                        self._add_history(page, region, LEVEL_REGION, low, high, seen, result)
             elif place.region:
                 page = self._find_admin(place.region, LEVEL_REGION, place.country)
-                self._add_history(page, LEVEL_REGION, low, high, seen, result)
+                self._add_history(page, place.region, LEVEL_REGION, low, high, seen, result)
 
             if place.country and not in_france:
-                page = self._find_country_history(place.country)
+                page = self._find_history_article(place.country)
                 if page is not None and page.title not in seen:
                     sections = parse_sections(page.text)[1:]
                     text = select_paragraphs(sections, low, high, self.budgets[LEVEL_COUNTRY])
@@ -348,28 +354,30 @@ class SourceCollector:
                     return page
         return None
 
-    def _find_country_history(self, country: str) -> Optional[Page]:
+    def _find_history_article(self, name: str) -> Optional[Page]:
         """
-        Find the history article of a foreign country.
+        Find the dedicated history article of a country, province or
+        department (e.g. "Histoire de la Haute-Saône").
 
         Parameters
         ----------
-        country : str
-            Country name.
+        name : str
+            Entity name.
 
         Returns
         -------
         Page or None
             Article, None when not found.
         """
-        for pattern in _COUNTRY_HISTORY[self.lang]:
-            page = self.client.get_page(pattern.format(country))
-            if self._valid(page, None):
+        wanted = normalize(name)
+        for pattern in _HISTORY_ARTICLES[self.lang]:
+            page = self.client.get_page(pattern.format(name))
+            if self._valid(page, None) and wanted in normalize(page.title):
                 return page
         prefix = "histoire" if self.lang == "fr" else "history"
-        for title in self.client.search("%s %s" % (prefix, country))[:5]:
+        for title in self.client.search("%s %s" % (prefix, name))[:5]:
             normalized = normalize(title)
-            if normalized.startswith(prefix) and normalize(country) in normalized:
+            if normalized.startswith(prefix) and wanted in normalized:
                 page = self.client.get_page(title)
                 if self._valid(page, None):
                     return page
@@ -426,15 +434,18 @@ class SourceCollector:
             result.warnings.append(self.messages["no_history"] % page.title)
         self._append(page, LEVEL_COMMUNE, "\n".join(p for p in (lead, history) if p), seen, result)
 
-    def _add_history(self, page: Optional[Page], level: str, low: Optional[int],
+    def _add_history(self, page: Optional[Page], name: str, level: str, low: Optional[int],
                      high: Optional[int], seen: Set[str], result: CollectedSources):
         """
-        Add the history excerpt of an administrative entity.
+        Add the history excerpt of an administrative entity, completed by its
+        dedicated history article when the history section is too thin.
 
         Parameters
         ----------
         page : Page or None
-            Article, ignored when None.
+            Article, None when not found.
+        name : str
+            Entity name, used to find its history article.
         level : str
             Level of the excerpt.
         low : int or None
@@ -446,11 +457,20 @@ class SourceCollector:
         result : CollectedSources
             Result to complete.
         """
-        if page is None or page.title in seen:
+        text = ""
+        if page is not None and page.title not in seen:
+            sections = history_sections(parse_sections(page.text))
+            text = select_paragraphs(sections, low, high, self.budgets[level])
+            self._append(page, level, text, seen, result)
+        if len(text) >= MIN_HISTORY_CHARS or not name:
             return
-        sections = history_sections(parse_sections(page.text))
-        text = select_paragraphs(sections, low, high, self.budgets[level])
-        self._append(page, level, text, seen, result)
+        article = self._find_history_article(name)
+        if article is None or article.title in seen:
+            return
+        budget = self.budgets[level] - len(text)
+        self._append(article, level,
+                     select_paragraphs(parse_sections(article.text), low, high, budget),
+                     seen, result)
 
     def _add_france_periods(self, first_year: int, last_year: Optional[int], seen: Set[str],
                             result: CollectedSources):

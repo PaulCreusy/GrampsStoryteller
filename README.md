@@ -75,7 +75,11 @@ broadest level, because small communes rarely have a detailed history:
 4. the national periods covering the years (e.g. Monarchie de Juillet, Third
    Republic), or the history article of a foreign country.
 
-Only the paragraphs of the history sections that match the years are kept. When
+When the history section of a department, province or country has nothing for
+the years, its dedicated article is used instead (e.g. "Histoire de la
+Haute-Saône"). Only the paragraphs that match the years are kept; undated
+paragraphs are kept only under a heading specific to the period (e.g.
+"XIXe siècle", not "XXe et XXIe siècles"). When
 the local sources are rich, the LLM may only use outside knowledge for the daily
 life paragraph; otherwise it may add well-established general knowledge anywhere.
 General knowledge is shown in italics, with a one-line legend.

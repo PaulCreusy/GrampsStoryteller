@@ -31,6 +31,13 @@ _EN_DECADE = re.compile(r"\b(1[0-9]{2}|20[0-9])0s\b")
 
 _HISTORY_TITLES = ("histoire", "historique", "history")
 
+# A heading covers the period "specifically" (and then keeps its undated
+# paragraphs) when it spans at most a century (or twice the period), starts at
+# most HEADING_BEFORE years before the period and ends at most HEADING_AFTER
+# years after it: background is welcome, later events are digressions
+HEADING_BEFORE = 100
+HEADING_AFTER = 60
+
 # Era keywords found in section headings, most specific first
 _ERAS: List[Tuple[str, Span]] = [
     ("prehistoire", (-10000, -800)),
@@ -292,9 +299,11 @@ def select_paragraphs(sections: List[Section], low: Optional[int], high: Optiona
     Keep the paragraphs of the sections relevant to [low, high].
 
     A paragraph mentioning dates is kept when one of them intersects the
-    period. A paragraph without date is kept when its heading covers the
-    period, or when it directly follows a kept dated paragraph in a section
-    whose heading gives no period (undated paragraphs do not chain).
+    period. A paragraph without date is kept when its heading specifically
+    covers the period (e.g. "XIXe siècle" for 1878-1924, but not
+    "XXe et XXIe siècles"), or when it directly follows a kept dated
+    paragraph in a section whose heading is broad or gives no period
+    (undated paragraphs do not chain).
 
     Parameters
     ----------
@@ -315,9 +324,7 @@ def select_paragraphs(sections: List[Section], low: Optional[int], high: Optiona
     output: List[str] = []
     used = 0
     for section in sections:
-        heading = era_spans(section.title)
-        heading_known = bool(heading)
-        heading_relevant = low is None or (heading_known and overlaps(heading, low, high))
+        heading_known, heading_relevant = _heading_status(era_spans(section.title), low, high)
         previous_dated_kept = False
         title_written = False
         for paragraph in section.paragraphs:
@@ -346,6 +353,41 @@ def select_paragraphs(sections: List[Section], low: Optional[int], high: Optiona
             output.append(piece)
             used += len(piece)
     return "\n".join(output)
+
+
+def _heading_status(spans: List[Span], low: Optional[int],
+                    high: Optional[int]) -> Tuple[bool, bool]:
+    """
+    Tell whether a heading decides the fate of its undated paragraphs.
+
+    Parameters
+    ----------
+    spans : list of tuple of int
+        Spans of the heading.
+    low : int or None
+        Lower bound of the period.
+    high : int or None
+        Upper bound of the period.
+
+    Returns
+    -------
+    tuple of (bool, bool)
+        (known, relevant). A heading outside the period is known and not
+        relevant; a heading specific to the period is known and relevant; a
+        broad heading or a heading without period is unknown.
+    """
+    if low is None:
+        return True, True
+    if not spans:
+        return False, False
+    if not overlaps(spans, low, high):
+        return True, False
+    start = min(span[0] for span in spans)
+    end = max(span[1] for span in spans)
+    narrow = end - start <= max(100, 2 * (high - low))
+    if narrow and start >= low - HEADING_BEFORE and end <= high + HEADING_AFTER:
+        return True, True
+    return False, False
 
 
 def lead_text(sections: List[Section], budget: int) -> str:

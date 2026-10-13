@@ -101,3 +101,16 @@ def test_undated_paragraphs_do_not_chain():
     assert "école" in text
     assert "phare" in text
     assert "fusionne" not in text
+
+
+def test_broad_headings_do_not_keep_undated_paragraphs():
+    article = (
+        "Intro.\n== Histoire ==\n"
+        "=== XIXe siècle ===\nLes forges emploient de nombreux ouvriers.\n"
+        "=== XXe siècle et XXIe siècle ===\nCette fusion sera mal perçue par la population.\n"
+        "En 1920, la région se reconstruit.\n"
+    )
+    text = select_paragraphs(history_sections(parse_sections(article)), 1868, 1924, 5000)
+    assert "forges" in text
+    assert "fusion" not in text
+    assert "1920" in text
