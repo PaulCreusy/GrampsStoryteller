@@ -26,6 +26,55 @@ class OpenAICompatibleProvider(LLMProvider):
     Chat completions provider (POST {base_url}/chat/completions).
     """
 
+    def _error(self, detail: str) -> LLMError:
+        """
+        Build an error, hinting at the "/v1" suffix when the URL looks wrong.
+
+        Parameters
+        ----------
+        detail : str
+            Error reported by the server.
+
+        Returns
+        -------
+        LLMError
+            Error to raise.
+        """
+        lowered = detail.lower()
+        wrong_url = ("endpoint" in lowered or "not found" in lowered or "404" in lowered
+                     or "unexpected" in lowered)
+        if wrong_url and not self.base_url.rstrip("/").endswith("/v1"):
+            detail += (" — the API URL usually ends with /v1 (e.g. http://localhost:1234/v1"
+                       " for LM Studio).")
+        return LLMError(detail)
+
+    def _check_answer(self, answer: object) -> dict:
+        """
+        Raise when a server answers HTTP 200 with an error object.
+
+        Parameters
+        ----------
+        answer : object
+            Decoded answer.
+
+        Returns
+        -------
+        dict
+            The answer when it is not an error.
+
+        Raises
+        ------
+        LLMError
+            When the answer is an error or not an object.
+        """
+        if not isinstance(answer, dict):
+            raise self._error("Unexpected answer: %s" % str(answer)[:300])
+        error = answer.get("error")
+        if error:
+            message = error.get("message", str(error)) if isinstance(error, dict) else str(error)
+            raise self._error(message)
+        return answer
+
     def _headers(self) -> dict:
         """
         Build the authentication headers.
@@ -110,9 +159,10 @@ class OpenAICompatibleProvider(LLMProvider):
                     token_param = ("max_tokens" if token_param == "max_completion_tokens"
                                    else "max_completion_tokens")
                 else:
-                    raise LLMError(str(exc)) from exc
+                    raise self._error(str(exc)) from exc
         if answer is None:
             raise LLMError("The API rejected the request parameters.")
+        answer = self._check_answer(answer)
 
         try:
             choice = answer["choices"][0]
@@ -148,5 +198,6 @@ class OpenAICompatibleProvider(LLMProvider):
             answer = request_json(self.base_url + "/models", headers=self._headers(),
                                   timeout=30, retries=1)
         except HttpError as exc:
-            raise LLMError(str(exc)) from exc
+            raise self._error(str(exc)) from exc
+        answer = self._check_answer(answer)
         return sorted(item["id"] for item in answer.get("data", []) if "id" in item)

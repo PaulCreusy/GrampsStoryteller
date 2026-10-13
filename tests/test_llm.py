@@ -141,3 +141,11 @@ def test_http_errors_become_llm_errors(monkeypatch):
     monkeypatch.setattr(gemini, "request_json", fake)
     with pytest.raises(LLMError, match="401"):
         create_provider("gemini", "", "", "bad", None, 10).generate("s", "u")
+
+
+def test_error_answer_suggests_v1_suffix(monkeypatch):
+    fake = FakeHttp([{"error": "Unexpected endpoint or method. (POST /chat/completions)"}])
+    monkeypatch.setattr(openai_compat, "request_json", fake)
+    provider = create_provider("lmstudio", "http://localhost:1234", "m", None, None, 100)
+    with pytest.raises(LLMError, match="/v1"):
+        provider.generate("s", "u")
