@@ -220,13 +220,17 @@ class ValidationReport:
     llm_checked : bool
         Whether the optional LLM validation ran.
     llm_problems : int
-        Number of problems reported by the LLM validation.
+        Number of problems reported by the LLM validation (after the
+        automatic correction, when it ran).
+    corrected_problems : list of str
+        Problems fixed by the automatic correction.
     """
 
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     llm_checked: bool = False
     llm_problems: int = 0
+    corrected_problems: List[str] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
@@ -260,6 +264,8 @@ class GenerationResult:
         Model used.
     from_cache : bool
         Whether the text came from the local cache.
+    original_text : str or None
+        Text before the automatic correction, None when it did not run.
     """
 
     text: str
@@ -268,3 +274,4 @@ class GenerationResult:
     provider_label: str
     model: str
     from_cache: bool = False
+    original_text: Optional[str] = None

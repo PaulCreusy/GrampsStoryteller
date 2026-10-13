@@ -116,6 +116,50 @@ def test_llm_validation_is_optional(isolated_dirs):
     assert any("Phrase 2 inventée" in w for w in result.validation.warnings)
 
 
+def test_auto_correction_rewrites_the_flagged_text(isolated_dirs):
+    settings = Settings()
+    settings["llm_validation"] = True
+    settings["auto_correction"] = True
+    provider = FakeProvider([
+        "Texte initial inventé.",
+        '{"ok": false, "problemes": ["« inventé » : absent des extraits"]}',
+        "Texte corrigé.",
+        '{"ok": true, "problemes": []}',
+    ])
+    pipeline = StoryPipeline(settings, cache=DiskCache(None), wiki_client=FakeWikipedia(PAGES),
+                             provider=provider)
+    result = pipeline.generate(_request())
+    assert len(provider.prompts) == 4
+    system, user = provider.prompts[2]
+    assert system == provider.prompts[0][0]  # same writing rules
+    assert "« inventé » : absent des extraits" in user
+    assert "Texte initial inventé." in user
+    assert "Texte corrigé." in provider.prompts[3][1]
+    assert result.text == "Texte corrigé."
+    assert result.original_text == "Texte initial inventé."
+    assert result.validation.corrected_problems == ["« inventé » : absent des extraits"]
+    assert result.validation.llm_problems == 0
+
+
+def test_failed_correction_keeps_the_initial_text(isolated_dirs):
+    settings = Settings()
+    settings["llm_validation"] = True
+    settings["auto_correction"] = True
+    provider = FakeProvider(["Texte initial.", '{"ok": false, "problemes": ["Phrase 1"]}', " "])
+    result = StoryPipeline(settings, cache=DiskCache(None), wiki_client=FakeWikipedia(PAGES),
+                           provider=provider).generate(_request())
+    assert result.text == "Texte initial."
+    assert result.original_text is None
+    assert result.validation.llm_problems == 1
+    assert any("correction" in w for w in result.validation.warnings)
+
+    # Without problems, no correction request is sent
+    provider = FakeProvider(["Texte.", '{"ok": true, "problemes": []}'])
+    StoryPipeline(settings, cache=DiskCache(None), wiki_client=FakeWikipedia(PAGES),
+                  provider=provider).generate(_request())
+    assert not provider.texts and len(provider.prompts) == 2
+
+
 def test_custom_prompts_are_used(isolated_dirs):
     settings = Settings()
     settings["user_prompt"] = "R={reperes} L={langue} N={longueur} J={\"json\": 1}"

@@ -2,10 +2,10 @@
   {
     "t": 2,
     "i": "gramps_storyteller",
-    "n": "Storyteller: historical context",
-    "v": "0.2.3",
+    "n": "Storyteller : contexte historique",
+    "v": "0.3.0",
     "g": "6.0",
-    "d": "Writes, in a note, the sourced historical context of the places and periods where a person lived, without sending any identifying data.",
+    "d": "Rédige dans une note le contexte historique sourcé des lieux et des époques où une personne a vécu, sans transmettre aucune donnée identifiante.",
     "z": "GrampsStoryteller.addon.tgz",
     "s": 3,
     "a": 0

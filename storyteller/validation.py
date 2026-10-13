@@ -41,6 +41,8 @@ _MESSAGES = {
         "url": "Le texte contient des URL, elles ont été retirées.",
         "llm_invalid": "La validation par LLM a renvoyé une réponse illisible.",
         "llm_problem": "Validation LLM : %s",
+        "correction_failed": "La correction automatique a échoué (%s) : le texte initial est "
+                             "conservé.",
     },
     "en": {
         "empty": "The generated text is empty.",
@@ -52,6 +54,7 @@ _MESSAGES = {
         "url": "The text contained URLs, they were removed.",
         "llm_invalid": "The LLM validation returned an unreadable answer.",
         "llm_problem": "LLM validation: %s",
+        "correction_failed": "The automatic correction failed (%s): the initial text is kept.",
     },
 }
 

@@ -25,7 +25,8 @@ import gramps  # noqa: E402
 from gramps.cli.user import User  # noqa: E402
 from gramps.gen.db.utils import import_as_dict  # noqa: E402
 from gramps.gen.lib import (  # noqa: E402
-    Date, Event, EventRef, EventType, Person, Place, PlaceName, PlaceRef, PlaceType)
+    ChildRef, Date, Event, EventRef, EventType, Family, Person, Place, PlaceName, PlaceRef,
+    PlaceType)
 from gramps.gen.db import DbTxn  # noqa: E402
 
 # Local imports #
@@ -34,6 +35,9 @@ from storyteller.extraction import (  # noqa: E402
     SKIP_LIVING, SKIP_NO_LANDMARK, SKIP_PRIVATE, extract_person)
 from storyteller.note_content import build_note_content  # noqa: E402
 from storyteller.notes import TAG_NAME, write_story_note  # noqa: E402
+from storyteller.selection import (  # noqa: E402
+    SCOPE_ACTIVE, SCOPE_ALL, SCOPE_ANCESTORS, SCOPE_DESCENDANTS, ancestors, descendants,
+    people_for_scope, persons_with_story_note)
 
 #############
 # Functions #
@@ -171,3 +175,63 @@ def test_note_is_created_then_replaced(empty_db):
     assert note.get_type().xml_str() == "Life story"
     tags = note.get_styledtext().get_tags()
     assert any(int(tag.name) == tag.name.ITALIC for tag in tags)
+
+
+class _UiState:
+    def __init__(self, active):
+        self.active = active
+
+    def get_active(self, navigation_type):
+        return self.active
+
+
+def _family(db, trans, father, mother, children):
+    family = Family()
+    family.set_father_handle(father.get_handle())
+    family.set_mother_handle(mother.get_handle())
+    for child in children:
+        ref = ChildRef()
+        ref.ref = child.get_handle()
+        family.add_child_ref(ref)
+    db.add_family(family, trans)
+    for parent in (father, mother):
+        parent.add_family_handle(family.get_handle())
+        db.commit_person(parent, trans)
+    for child in children:
+        child.add_parent_family_handle(family.get_handle())
+        db.commit_person(child, trans)
+
+
+def test_selection_scopes(empty_db):
+    db = empty_db
+    with DbTxn("setup", db) as trans:
+        people = {}
+        for key in ("gf", "gm", "f", "m", "me", "mate", "child", "mate2", "grandchild"):
+            person = Person()
+            db.add_person(person, trans)
+            people[key] = person
+        _family(db, trans, people["gf"], people["gm"], [people["f"]])
+        _family(db, trans, people["f"], people["m"], [people["me"]])
+        _family(db, trans, people["me"], people["mate"], [people["child"]])
+        _family(db, trans, people["child"], people["mate2"], [people["grandchild"]])
+        handle = {key: person.get_handle() for key, person in people.items()}
+
+    by_handle = {v: k for k, v in handle.items()}
+    names = lambda handles: [by_handle.get(h, "?") for h in handles]  # noqa: E731
+    assert names(ancestors(db, handle["me"], 1)) == ["me"]
+    assert names(ancestors(db, handle["me"], 2)) == ["me", "f", "m"]
+    assert names(ancestors(db, handle["me"], 10)) == ["me", "f", "m", "gf", "gm"]
+    assert names(descendants(db, handle["gf"], 3)) == ["gf", "f", "me"]
+    assert names(descendants(db, handle["me"], 10)) == ["me", "child", "grandchild"]
+
+    ui = _UiState(handle["me"])
+    assert people_for_scope(db, ui, SCOPE_ACTIVE) == [handle["me"]]
+    assert names(people_for_scope(db, ui, SCOPE_ANCESTORS, 2)) == ["me", "f", "m"]
+    assert names(people_for_scope(db, ui, SCOPE_DESCENDANTS, 2)) == ["me", "child"]
+    assert len(people_for_scope(db, ui, SCOPE_ALL)) == 9
+    assert people_for_scope(db, _UiState(None), SCOPE_ANCESTORS) == []
+
+    assert persons_with_story_note(db, handle.values()) == set()
+    content = build_note_content("Texte.", [], "OpenAI", "m", "fr")
+    write_story_note(db, handle["f"], content, "f")
+    assert persons_with_story_note(db, handle.values()) == {handle["f"]}

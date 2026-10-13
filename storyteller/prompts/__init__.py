@@ -2,8 +2,8 @@
 Default prompts and prompt rendering.
 
 Templates use the variables {reperes}, {profession}, {sources},
-{consigne_sources}, {langue}, {longueur} and, for the validation prompt,
-{texte}. Only these names are replaced, so other braces (JSON examples) are
+{consigne_sources}, {langue}, {longueur} and, for the validation and
+correction prompts, {texte} and {problemes}. Only these names are replaced, so other braces (JSON examples) are
 left untouched.
 """
 
@@ -26,8 +26,9 @@ from ..models import ContextRequest, SourceExtract
 #############
 
 PROMPT_DIR = os.path.dirname(os.path.abspath(__file__))
-VARIABLES = ("reperes", "profession", "sources", "consigne_sources", "langue", "longueur", "texte")
-KINDS = ("system", "user", "validation")
+VARIABLES = ("reperes", "profession", "sources", "consigne_sources", "langue", "longueur", "texte",
+             "problemes")
+KINDS = ("system", "user", "validation", "correction")
 
 LANGUAGE_NAMES = {
     "fr": {"fr": "français", "en": "anglais"},
@@ -106,7 +107,7 @@ def default_prompt(kind: str, lang: str) -> str:
     Parameters
     ----------
     kind : str
-        "system", "user" or "validation".
+        "system", "user", "validation" or "correction".
     lang : str
         Language code.
 
@@ -215,7 +216,7 @@ def template_or_default(custom: Optional[str], kind: str, lang: str) -> str:
     custom : str or None
         Template from the settings.
     kind : str
-        "system", "user" or "validation".
+        "system", "user", "validation" or "correction".
     lang : str
         Language code.
 

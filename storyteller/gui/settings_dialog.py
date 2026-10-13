@@ -194,6 +194,17 @@ class SettingsDialog:
         grid.attach(self.llm_validation, 0, row, 2, 1)
         row += 1
 
+        self.auto_correction = Gtk.CheckButton(
+            label=_("Rewrite the text when the validation finds problems, then check it again "
+                    "(two more requests)"))
+        self.auto_correction.set_active(bool(self.settings["auto_correction"]))
+        self.auto_correction.set_margin_start(24)
+        self.auto_correction.set_sensitive(self.llm_validation.get_active())
+        self.llm_validation.connect(
+            "toggled", lambda b: self.auto_correction.set_sensitive(b.get_active()))
+        grid.attach(self.auto_correction, 0, row, 2, 1)
+        row += 1
+
         clear_cache = Gtk.Button(label=_("Empty the cache (Wikipedia and texts)"))
         clear_cache.connect("clicked", self._on_clear_cache)
         self.cache_status = wrapped_label()
@@ -214,12 +225,14 @@ class SettingsDialog:
         box.pack_start(wrapped_label(_(
             "Available variables: {reperes} (landmarks), {profession}, {sources}, "
             "{consigne_sources} (instruction depending on the richness of the sources), "
-            "{langue}, {longueur} and, for the check, {texte}.")), False, False, 0)
+            "{langue}, {longueur} and, for the check and the correction, {texte} and "
+            "{problemes}.")), False, False, 0)
         self.prompt_views = {}
         titles = {
             "system": _("System prompt"),
             "user": _("User message"),
             "validation": _("Check prompt (optional LLM validation)"),
+            "correction": _("Correction prompt (optional automatic correction)"),
         }
         for kind in prompts.KINDS:
             scrolled, view = text_view(editable=True, height=110)
@@ -464,7 +477,7 @@ class SettingsDialog:
         Parameters
         ----------
         kind : str
-            "system", "user" or "validation".
+            "system", "user", "validation" or "correction".
         """
         set_text(self.prompt_views[kind], prompts.default_prompt(kind, self.language))
 
@@ -505,6 +518,7 @@ class SettingsDialog:
         self.settings["length_words"] = int(self.length.get_value())
         self.settings["include_occupation"] = self.include_occupation.get_active()
         self.settings["llm_validation"] = self.llm_validation.get_active()
+        self.settings["auto_correction"] = self.auto_correction.get_active()
         for kind, view in self.prompt_views.items():
             text = get_text(view)
             is_default = text.strip() == prompts.default_prompt(kind, self.language).strip()
