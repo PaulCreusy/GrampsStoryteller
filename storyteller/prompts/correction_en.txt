@@ -1,7 +1,7 @@
 A proofreader compared the text below with the numbered excerpts and found these problems:
 {problemes}
 
-Rewrite the text to fix each of these problems: remove the passage if the excerpts do not support it, or rephrase it so that it says exactly what the excerpts say. Leave the rest of the text unchanged, keep its three paragraphs and its <cg> and </cg> tags, and add no new information.
+Rewrite the text to fix each of these problems: remove the passage if the excerpts do not support it, or rephrase it so that it says exactly what the excerpts say. Leave the rest of the text unchanged, keep its three paragraphs and the <cg> and </cg> tags of the first two (the last one has none), and add no new information.
 
 Answer only with the corrected text in {langue}, without any comment or explanation.
 

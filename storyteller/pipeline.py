@@ -349,4 +349,9 @@ class StoryPipeline:
         new_report.corrected_problems = list(problems)
         # Check the corrected text again so that the report tells what remains
         self._validate_with_llm(corrected, prepared, new_report)
+        if new_report.llm_checked and new_report.llm_problems >= len(problems):
+            # Small models may "fix" correct facts: keep the correction only
+            # when it really reduces the problems
+            report.warnings.append(texts["correction_failed"] % texts["correction_worse"])
+            return None
         return corrected, new_report

@@ -46,8 +46,8 @@ _MESSAGES = {
         "unknown_ref": "Références à des sources inexistantes : %s.",
         "unbalanced": "Balises <cg> mal fermées : le marquage des connaissances générales est "
                       "approximatif.",
-        "cg_count": "%d passage(s) de connaissances générales (non sourcées), signalés en "
-                    "italique dans la note.",
+        "cg_count": "%d passage(s) de connaissances générales (non sourcées) hors du "
+                    "paragraphe sur la vie quotidienne, signalés en italique dans la note.",
         "years": "Années citées comme sourcées mais absentes des extraits : %s.",
         "url": "Le texte contient des URL, elles ont été retirées.",
         "llm_invalid": "La validation par LLM a renvoyé une réponse illisible : « %s »",
@@ -57,6 +57,7 @@ _MESSAGES = {
         "correction_failed": "La correction automatique a échoué (%s) : le texte initial est "
                              "conservé.",
         "correction_tags": "le marquage des connaissances générales a été perdu",
+        "correction_worse": "le texte corrigé n'a pas moins de problèmes",
         "correction_skipped": "Correction automatique non lancée : les balises <cg> du texte "
                               "sont mal placées, la validation ne peut pas distinguer les "
                               "connaissances générales.",
@@ -66,7 +67,8 @@ _MESSAGES = {
         "truncated": "The text was cut by the token limit: increase \"Max tokens\".",
         "unknown_ref": "References to missing sources: %s.",
         "unbalanced": "Unbalanced <cg> tags: the general knowledge marking is approximate.",
-        "cg_count": "%d general knowledge passage(s) (unsourced), shown in italics in the note.",
+        "cg_count": "%d general knowledge passage(s) (unsourced) outside the daily life "
+                    "paragraph, shown in italics in the note.",
         "years": "Years cited as sourced but missing from the excerpts: %s.",
         "url": "The text contained URLs, they were removed.",
         "llm_invalid": "The LLM validation returned an unreadable answer: \"%s\"",
@@ -75,6 +77,7 @@ _MESSAGES = {
         "llm_problem": "LLM validation: %s",
         "correction_failed": "The automatic correction failed (%s): the initial text is kept.",
         "correction_tags": "the general knowledge marking was lost",
+        "correction_worse": "the corrected text does not have fewer problems",
         "correction_skipped": "Automatic correction not run: the <cg> tags of the text are "
                               "misplaced, so the validation cannot tell general knowledge "
                               "apart.",
@@ -168,6 +171,29 @@ def tags_balanced(text: str) -> bool:
     return split_general_knowledge(text)[1]
 
 
+def split_daily_life(text: str) -> Tuple[str, str]:
+    """
+    Separate the last paragraph (daily life), which is general knowledge as
+    a whole, from the sourced paragraphs.
+
+    Parameters
+    ----------
+    text : str
+        Generated text.
+
+    Returns
+    -------
+    tuple of (str, str)
+        Sourced paragraphs (with their <cg> tags) and the daily life
+        paragraph without tags; the latter is empty for a single paragraph.
+    """
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text.strip()) if p.strip()]
+    if len(paragraphs) < 2:
+        return text.strip(), ""
+    daily = " ".join(_CG_SPLIT.sub("", paragraphs[-1]).split())
+    return "\n\n".join(paragraphs[:-1]), daily
+
+
 def strip_urls(text: str) -> str:
     """
     Remove URLs from a text.
@@ -249,7 +275,9 @@ def check_locally(text: str, source_count: int, sources_text: str, allowed_years
     if _URL.search(text):
         report.warnings.append(texts["url"])
 
-    segments, balanced = split_general_knowledge(text)
+    # The daily life paragraph is general knowledge as a whole
+    body, _daily = split_daily_life(text)
+    segments, balanced = split_general_knowledge(body)
     if not balanced:
         report.warnings.append(texts["unbalanced"])
     general = [s for s, is_cg in segments if is_cg and s.strip()]
@@ -486,7 +514,8 @@ def tidy_problem(problem: str, lang: str = "fr") -> str:
 def drop_unfounded_cg_problems(text: str, problems: List[str]) -> List[str]:
     """
     Remove the problems that only blame general knowledge for not being in
-    the excerpts: it is allowed when marked with <cg>.
+    the excerpts: it is allowed when marked with <cg>, and in the daily life
+    paragraph.
 
     Parameters
     ----------
@@ -500,12 +529,13 @@ def drop_unfounded_cg_problems(text: str, problems: List[str]) -> List[str]:
     list of str
         Problems to keep.
     """
-    segments, _balanced = split_general_knowledge(text)
+    body, daily = split_daily_life(text)
+    segments, _balanced = split_general_knowledge(body)
 
     def flat(value: str) -> str:
         return " ".join(value.replace("…", " ").replace("...", " ").split()).lower()
 
-    general = flat(" ".join(s for s, is_cg in segments if is_cg))
+    general = flat(" ".join([s for s, is_cg in segments if is_cg] + [daily]))
     sourced = flat(" ".join(s for s, is_cg in segments if not is_cg))
     kept = []
     for problem in problems:

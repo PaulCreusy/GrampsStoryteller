@@ -201,6 +201,23 @@ def test_no_correction_when_tags_are_misplaced(isolated_dirs):
     assert any("Correction automatique non lancée" in w for w in result.validation.warnings)
 
 
+def test_correction_with_as_many_problems_is_rejected(isolated_dirs):
+    settings = Settings()
+    settings["llm_validation"] = True
+    settings["auto_correction"] = True
+    provider = FakeProvider([
+        "Texte initial.",
+        '{"ok": false, "problemes": ["« initial » : absent"]}',
+        "Texte corrigé.",
+        '{"ok": false, "problemes": ["« corrigé » : absent"]}',
+    ])
+    result = StoryPipeline(settings, cache=DiskCache(None), wiki_client=FakeWikipedia(PAGES),
+                           provider=provider).generate(_request())
+    assert result.text == "Texte initial."
+    assert result.original_text is None
+    assert any("n'a pas moins de problèmes" in w for w in result.validation.warnings)
+
+
 def test_custom_prompts_are_used(isolated_dirs):
     settings = Settings()
     settings["user_prompt"] = "R={reperes} L={langue} N={longueur} J={\"json\": 1}"

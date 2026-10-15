@@ -1,7 +1,7 @@
 Un relecteur a comparé le texte ci-dessous aux extraits numérotés et y a relevé ces problèmes :
 {problemes}
 
-Réécris le texte en corrigeant chacun de ces problèmes : supprime le passage s'il n'est pas appuyé par les extraits, ou reformule-le pour qu'il dise exactement ce que disent les extraits. Ne touche pas au reste du texte, garde ses trois paragraphes et ses balises <cg> et </cg>, et n'ajoute aucune information nouvelle.
+Réécris le texte en corrigeant chacun de ces problèmes : supprime le passage s'il n'est pas appuyé par les extraits, ou reformule-le pour qu'il dise exactement ce que disent les extraits. Ne touche pas au reste du texte, garde ses trois paragraphes et les balises <cg> et </cg> des deux premiers (le dernier n'en a pas), et n'ajoute aucune information nouvelle.
 
 Réponds uniquement avec le texte corrigé en {langue}, sans commentaire ni explication.
 
