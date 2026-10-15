@@ -67,6 +67,52 @@ MAJOR_PERIODS = {"Révolution française", "Guerre franco-allemande de 1870",
 # Smallest excerpt of the other periods
 MIN_PERIOD_ITEM = 350
 
+# Articles about France during a period, tried before the general article
+# (whose lead often describes the world, not life in France), then found by
+# a search whose result title must contain every keyword ("a|b": one of
+# them). Titles that do not exist are simply skipped.
+PERIOD_ARTICLES: Dict[str, Dict[str, Tuple[List[str], str, List[str]]]] = {
+    "Première Guerre mondiale": {
+        "fr": (["La France dans la Première Guerre mondiale",
+                "France pendant la Première Guerre mondiale",
+                "Histoire de la France pendant la Première Guerre mondiale"],
+               "France Première Guerre mondiale", ["france", "premiere guerre mondiale"]),
+        "en": (["France in World War I", "France during World War I"],
+               "France World War I", ["france", "world war i"]),
+    },
+    "Entre-deux-guerres": {
+        "fr": (["France de l'entre-deux-guerres", "France dans l'entre-deux-guerres",
+                "Histoire de la France dans l'entre-deux-guerres"],
+               "France entre-deux-guerres", ["france", "entre deux guerres"]),
+        "en": (["France in the interwar period", "Interwar France"],
+               "France interwar period", ["france", "interwar"]),
+    },
+    "Seconde Guerre mondiale": {
+        "fr": (["Occupation de la France par l'Allemagne pendant la Seconde Guerre mondiale",
+                "France pendant la Seconde Guerre mondiale",
+                "Histoire de la France pendant la Seconde Guerre mondiale"],
+               "France Seconde Guerre mondiale occupation",
+               ["france", "seconde guerre mondiale"]),
+        "en": (["German occupation of France during World War II",
+                "Military history of France during World War II"],
+               "France World War II occupation", ["france", "world war ii"]),
+    },
+}
+
+# Departments wholly or partly occupied by the German army in 1914-1918
+OCCUPIED_1914 = {"02", "08", "51", "54", "55", "59", "60", "62", "80", "88"}
+OCCUPATION_1914_ARTICLES: Dict[str, Tuple[List[str], str, List[str]]] = {
+    "fr": (["Occupation du Nord de la France pendant la Première Guerre mondiale",
+            "Occupation allemande du Nord de la France pendant la Première Guerre mondiale",
+            "Nord de la France pendant la Première Guerre mondiale"],
+           "occupation Nord de la France Première Guerre mondiale",
+           ["occupation", "nord", "premiere guerre mondiale|1914"]),
+    "en": (["German occupation of northern France during World War I",
+            "Occupation of northern France during World War I"],
+           "German occupation northern France World War I",
+           ["occupation", "france", "world war i|1914"]),
+}
+
 FRANCE_PERIODS: List[Tuple[int, int, str, str]] = [
     (987, 1589, "Royaume de France", "Kingdom of France"),
     (1589, 1789, "Ancien Régime", "Ancien Régime"),
@@ -188,10 +234,13 @@ class SourceCollector:
         result = CollectedSources()
         seen: Set[str] = set()
         has_france = False
+        france_departments: Set[str] = set()
 
         for place in request.places:
             dep_code, in_france = self._resolve_department(place, result.warnings)
             has_france = has_france or in_france
+            if in_france and dep_code:
+                france_departments.add(dep_code)
             department = place.department or fr_admin.department_name(dep_code)
 
             self.progress(place.name)
@@ -226,7 +275,8 @@ class SourceCollector:
                     self._append(page, LEVEL_COUNTRY, text, seen, result)
 
         if has_france and request.year_min is not None:
-            self._add_france_periods(request.year_min, request.year_max, seen, result)
+            self._add_france_periods(request.year_min, request.year_max, seen, result,
+                                     france_departments)
 
         for number, extract in enumerate(result.extracts, start=1):
             extract.number = number
@@ -483,9 +533,11 @@ class SourceCollector:
                      seen, result)
 
     def _add_france_periods(self, first_year: int, last_year: Optional[int], seen: Set[str],
-                            result: CollectedSources):
+                            result: CollectedSources,
+                            departments: Optional[Set[str]] = None):
         """
-        Add the leads of the national periods overlapping the years.
+        Add the national periods overlapping the years, preferring articles
+        about France during a war to the general article.
 
         Parameters
         ----------
@@ -497,23 +549,70 @@ class SourceCollector:
             Titles already used.
         result : CollectedSources
             Result to complete.
+        departments : set of str, optional
+            Codes of the French departments of the landmarks.
         """
         last_year = last_year if last_year is not None else first_year
         periods = [p for p in FRANCE_PERIODS if p[0] <= last_year and p[1] >= first_year]
         if not periods:
             return
+        occupied = bool((departments or set()) & OCCUPIED_1914) and \
+            any(p[2] == "Première Guerre mondiale" for p in periods)
         item = self.budgets["period_item"]
-        majors = sum(1 for p in periods if p[2] in MAJOR_PERIODS)
-        minors = len(periods) - majors
+        majors = sum(1 for p in periods if p[2] in MAJOR_PERIODS) + int(occupied)
+        minors = len(periods) + int(occupied) - majors
         remaining = self.budgets[LEVEL_PERIOD] - majors * item
         minor_budget = min(item, max(MIN_PERIOD_ITEM, remaining // minors)) if minors else 0
         for first, last, title_fr, title_en in periods:
             title = title_fr if self.lang == "fr" else title_en
             self.progress(title)
-            page = self.client.get_page(title)
-            if not self._valid(page, None):
+            page = self._period_page(title, PERIOD_ARTICLES.get(title_fr, {}).get(self.lang))
+            if page is None:
                 continue
             budget = item if title_fr in MAJOR_PERIODS else minor_budget
             span = "%d–%d" % (first, last) if last < 2100 else "%d–" % first
             self._append(page, LEVEL_PERIOD, lead_text(parse_sections(page.text), budget),
                          seen, result, span)
+            if occupied and title_fr == "Première Guerre mondiale":
+                page = self._period_page(None, OCCUPATION_1914_ARTICLES.get(self.lang))
+                if page is not None:
+                    self._append(page, LEVEL_PERIOD, lead_text(parse_sections(page.text), item),
+                                 seen, result, span)
+
+    def _period_page(self, general: Optional[str],
+                     spec: Optional[Tuple[List[str], str, List[str]]]) -> Optional[Page]:
+        """
+        Find the article of a period: a specific article, a matching search
+        result, then the general article.
+
+        Parameters
+        ----------
+        general : str or None
+            Title of the general article, None when there is no fallback.
+        spec : tuple or None
+            (specific titles, search query, keywords that a search result
+            title must all contain).
+
+        Returns
+        -------
+        Page or None
+            Article.
+        """
+        if spec is not None:
+            titles, query, keywords = spec
+            for title in titles:
+                page = self.client.get_page(title)
+                if self._valid(page, None):
+                    return page
+            for title in self.client.search(query):
+                # Whole words: "world war i" must not match "world war ii"
+                normalized = " %s " % normalize(title)
+                if all(any(" %s " % normalize(word) in normalized for word in keyword.split("|"))
+                       for keyword in keywords):
+                    page = self.client.get_page(title)
+                    if self._valid(page, None):
+                        return page
+        if general is None:
+            return None
+        page = self.client.get_page(general)
+        return page if self._valid(page, None) else None

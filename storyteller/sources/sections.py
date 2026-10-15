@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 # Local imports #
 from ..fr_admin import normalize
@@ -40,6 +40,18 @@ _HISTORY_TITLES = ("histoire", "historique", "history")
 # years after it: background is welcome, later events are digressions
 HEADING_BEFORE = 100
 HEADING_AFTER = 60
+
+# When the relevant paragraphs exceed the budget, it is shared between
+# slices of this many years, so that a long period is covered to its end
+SLICE_YEARS = 25
+# Paragraphs about what shaped daily life are preferred within a slice
+_PRIORITY = re.compile(
+    r"guerre|occup|invasion|bombard|destruct|front\b|exode|réfugi|mobilis|"
+    r"mine|minier|houill|charbon|textile|filature|tissage|industri|usine|ouvri|grève|"
+    r"agricol|agricult|cultivat|récolte|élevage|commerce|marché|"
+    r"épidémie|choléra|famine|reconstruct|"
+    r"\bwar\b|occupation|mining|coal|factory|industr|farm|agricultur|strike|epidemic",
+    re.IGNORECASE)
 
 # Era keywords found in section headings, most specific first
 _ERAS: List[Tuple[str, Span]] = [
@@ -342,40 +354,110 @@ def select_paragraphs(sections: List[Section], low: Optional[int], high: Optiona
     str
         Selected paragraphs, with subsection titles.
     """
-    output: List[str] = []
-    used = 0
-    for section in sections:
+    # Relevant paragraphs: (section index, section title, paragraph, spans)
+    candidates: List[Tuple[int, str, str, List[Span]]] = []
+    for index, section in enumerate(sections):
         heading_known, heading_relevant = _heading_status(era_spans(section.title), low, high)
         previous_dated_kept = False
-        title_written = False
+        heading_spans = era_spans(section.title) + time_spans(section.title)
         for paragraph in section.paragraphs:
             if looks_like_reference(paragraph):
                 continue
+            spans = time_spans(paragraph) if low is not None else []
             if low is None:
                 keep = True
+            elif spans:
+                keep = overlaps(spans, low, high)
+            elif heading_known:
+                keep = heading_relevant
             else:
-                spans = time_spans(paragraph)
-                if spans:
-                    keep = overlaps(spans, low, high)
-                elif heading_known:
-                    keep = heading_relevant
-                else:
-                    keep = previous_dated_kept
+                keep = previous_dated_kept
+            if low is not None:
                 previous_dated_kept = bool(spans) and keep
-            if not keep:
-                continue
-            title = "— %s —" % section.title if section.title and not title_written else ""
-            remaining = budget - used - len(title)
-            piece = _fit(paragraph, remaining)
-            if not piece:
-                continue
-            if title:
-                output.append(title)
-                used += len(title)
-                title_written = True
-            output.append(piece)
-            used += len(piece)
+            if keep:
+                candidates.append((index, section.title, paragraph, spans or heading_spans))
+
+    total = sum(len(c[2]) + len(c[1]) + 6 for c in candidates)
+    if low is None or high is None or total <= budget:
+        chosen = list(range(len(candidates)))
+    else:
+        chosen = _balanced_choice(candidates, low, high, budget)
+
+    output: List[str] = []
+    used = 0
+    written_titles = set()
+    for position in sorted(chosen):
+        index, section_title, paragraph, _spans = candidates[position]
+        title = ("— %s —" % section_title
+                 if section_title and index not in written_titles else "")
+        piece = _fit(paragraph, budget - used - len(title))
+        if not piece:
+            continue
+        if title:
+            output.append(title)
+            used += len(title)
+            written_titles.add(index)
+        output.append(piece)
+        used += len(piece)
     return "\n".join(output)
+
+
+def _balanced_choice(candidates: List[Tuple[int, str, str, List[Span]]], low: int, high: int,
+                     budget: int) -> List[int]:
+    """
+    Choose paragraphs spread over the whole period when they exceed the
+    budget, preferring those about wars, economy and hardships.
+
+    Parameters
+    ----------
+    candidates : list of tuple
+        (section index, section title, paragraph, spans) of the relevant
+        paragraphs, in article order.
+    low : int
+        Lower bound of the period.
+    high : int
+        Upper bound of the period.
+    budget : int
+        Maximum number of characters.
+
+    Returns
+    -------
+    list of int
+        Positions of the chosen candidates.
+    """
+    slices = max(1, -(-(high - low) // SLICE_YEARS))
+
+    def slice_of(spans: List[Span]) -> int:
+        if not spans:
+            return -1
+        middle = max(low, min(high, (spans[0][0] + spans[0][1]) // 2))
+        return min(slices - 1, (middle - low) * slices // max(1, high - low))
+
+    queues: Dict[int, List[int]] = {}
+    for position, (_index, _title, paragraph, spans) in enumerate(candidates):
+        queues.setdefault(slice_of(spans), []).append(position)
+    for positions in queues.values():
+        # Priority paragraphs first, then article order
+        positions.sort(key=lambda p: (not _PRIORITY.search(candidates[p][2]), p))
+
+    chosen: List[int] = []
+    used = 0
+    # Round robin over the slices (undated paragraphs last)
+    order = sorted(queues, key=lambda key: (key < 0, key))
+    progress = True
+    while progress:
+        progress = False
+        for key in order:
+            queue = queues[key]
+            while queue:
+                position = queue.pop(0)
+                size = len(candidates[position][2]) + len(candidates[position][1]) + 6
+                if used + size <= budget:
+                    chosen.append(position)
+                    used += size
+                    progress = True
+                    break
+    return chosen
 
 
 def _heading_status(spans: List[Span], low: Optional[int],

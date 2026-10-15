@@ -153,3 +153,40 @@ def test_wars_keep_a_full_excerpt_among_many_periods():
     assert war.span == "1914–1918" and periods["Cinquième République (France)"].span == "1958–"
     assert len(war.text) > 2 * len(other.text)
     assert sum(len(e.text) for e in periods.values()) <= 7000
+
+
+def test_wars_use_articles_about_france_and_the_occupation():
+    pages = {
+        "Première Guerre mondiale": "La guerre commence à Sarajevo.",
+        "France pendant la Première Guerre mondiale": "La France mobilise ses hommes.",
+        "Seconde Guerre mondiale": "Le conflit oppose les Alliés et l'Axe.",
+        "Histoire de l'occupation du Nord (1914-1918)": "Le Nord est occupé et réquisitionné.",
+    }
+    search = {"occupation Nord de la France Première Guerre mondiale": [
+        "Bataille de la Marne", "Histoire de l'occupation du Nord (1914-1918)"]}
+    wiki = FakeWikipedia(pages, search_results=search)
+    result = SourceCollector(wiki).collect(
+        _request(PlaceInfo(name="Inconnu", country="France", code="59112"), years=(1900, 1950)))
+    titles = [e.title for e in result.extracts if e.level == "period"]
+    assert "France pendant la Première Guerre mondiale" in titles
+    assert "Première Guerre mondiale" not in titles
+    assert "Seconde Guerre mondiale" in titles  # general article as a fallback
+    # The occupation article was found by the search, not by a wrong result
+    assert titles.index("Histoire de l'occupation du Nord (1914-1918)") == \
+        titles.index("France pendant la Première Guerre mondiale") + 1
+    assert "Bataille de la Marne" not in wiki.requested
+
+    wiki = FakeWikipedia(pages, search_results=search)
+    result = SourceCollector(wiki).collect(
+        _request(PlaceInfo(name="Inconnu", country="France", code="29200"), years=(1900, 1950)))
+    assert "Histoire de l'occupation du Nord (1914-1918)" not in [e.title for e in result.extracts]
+
+
+def test_search_keywords_match_whole_words():
+    pages = {"France in World War II": "France is occupied.",
+             "France and World War I": "France mobilizes."}
+    wiki = FakeWikipedia(pages, lang="en", search_results={
+        "France World War I": ["France in World War II", "France and World War I"]})
+    page = SourceCollector(wiki)._period_page(None, (["Missing"], "France World War I",
+                                                     ["france", "world war i"]))
+    assert page.title == "France and World War I"
