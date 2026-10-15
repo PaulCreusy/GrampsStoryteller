@@ -12,6 +12,8 @@ not labeled (no "birth" or "death") and are sorted chronologically.
 # Python imports #
 from __future__ import annotations
 
+import dataclasses
+import re
 from typing import List, Optional
 
 # Local imports #
@@ -41,14 +43,44 @@ _WORDS = {
     },
 }
 
+_STREET = re.compile(
+    r"^(\d+\s*(bis|ter)?\b[\s,]*)?(rue|route|chemin|avenue|av\.|boulevard|bd|place|impasse|"
+    r"all[ée]e|quai|cours|square|sentier|voie|faubourg|lieu-dit|lieudit|r[ée]sidence|"
+    r"street|road|lane|drive)\b", re.IGNORECASE)
+
 #############
 # Functions #
 #############
 
 
+def commune_name(name: str) -> str:
+    """
+    Remove the street of a place entered as an address.
+
+    "35 Rue Jules Guesde   Annoeullin" or "Rue de Don, Annoeullin" give
+    "Annoeullin": the street would not be found on Wikipedia, and it is more
+    identifying than the commune.
+
+    Parameters
+    ----------
+    name : str
+        Place name.
+
+    Returns
+    -------
+    str
+        Commune name.
+    """
+    parts = [part.strip() for part in re.split(r"\s{2,}|,", name) if part.strip()]
+    if len(parts) > 1 and (_STREET.match(parts[0]) or parts[0][:1].isdigit()):
+        return parts[1]
+    return name
+
+
 def complete_place(place: PlaceInfo) -> PlaceInfo:
     """
-    Fill the department of a French place from its postal or INSEE code.
+    Remove the street of an address and fill the department of a French
+    place from its postal or INSEE code.
 
     Parameters
     ----------
@@ -60,6 +92,9 @@ def complete_place(place: PlaceInfo) -> PlaceInfo:
     PlaceInfo
         Same place with the department filled when it was missing.
     """
+    name = commune_name(place.name)
+    if name != place.name:
+        place = dataclasses.replace(place, name=name)
     if place.department or (place.country and not fr_admin.is_france(place.country)):
         return place
     code = fr_admin.department_code_from_place_code(place.code)

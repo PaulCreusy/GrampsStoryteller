@@ -157,6 +157,10 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         self.batch_report: Optional[BatchReport] = None
         self.batch_total = 0
         self.batch_done = 0
+        # Groups sent to the main loop by the worker, and end of the run
+        # waiting for them (see _maybe_finish)
+        self.groups_dispatched = 0
+        self.pending_end = None
         self.sent_dialog: Optional[SentDataDialog] = None
         self.result_dialog: Optional[ResultDialog] = None
 
@@ -823,6 +827,8 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         self.batch_report = BatchReport()
         self.batch_total = len(plan.groups)
         self.batch_done = 0
+        self.groups_dispatched = 0
+        self.pending_end = None
         single = len(plan.groups) == 1
 
         def progress(message: str):
@@ -835,6 +841,8 @@ class StorytellerTool(tool.Tool, ManagedWindow):
 
         def on_done(group: BatchGroup, result: Optional[GenerationResult],
                     error: Optional[Exception]):
+            # Counted in the worker, before the end of the run is queued
+            self.groups_dispatched += 1
             GLib.idle_add(self._on_group_done, group, result, error, lang)
 
         def work():
@@ -881,16 +889,39 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         """
         if not self._is_open():
             return False
-        report = self.batch_report
-        self.batch_done += 1
-        if self.pulse_id is None:
-            self.progress.set_fraction(self.batch_done / max(self.batch_total, 1))
+        try:
+            self._write_group(group, result, error, lang)
+        finally:
+            # Writing a note may run the GTK main loop (database signals), so
+            # the end of the run may already be waiting for this group
+            self.batch_done += 1
+            if self.pulse_id is None:
+                self.progress.set_fraction(self.batch_done / max(self.batch_total, 1))
+            self._maybe_finish()
+        return False
 
+    def _write_group(self, group: BatchGroup, result: Optional[GenerationResult],
+                     error: Optional[Exception], lang: str):
+        """
+        Write the notes of a group and record the outcome of its persons.
+
+        Parameters
+        ----------
+        group : BatchGroup
+            Processed group.
+        result : GenerationResult or None
+            Generation result.
+        error : Exception or None
+            Generation error.
+        lang : str
+            Language of the text.
+        """
+        report = self.batch_report
         if error is not None:
             for item in group.items:
                 report.add(PersonOutcome(name=item.facts.name, gramps_id=item.facts.gramps_id,
                                          status=STATUS_FAILED, message=_("Error: %s") % error))
-            return False
+            return
 
         validation = result.validation
         warnings = result.sources.warnings + validation.warnings
@@ -917,7 +948,6 @@ class StorytellerTool(tool.Tool, ManagedWindow):
                     outcome.status = STATUS_FAILED
                     outcome.message = _("Error while writing the note: %s") % exc
             report.add(outcome)
-        return False
 
     def _on_batch_done(self, run_report: Optional[BatchReport],
                        error: Optional[Exception]) -> bool:
@@ -936,14 +966,26 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         bool
             False, to run once.
         """
+        self.pending_end = (run_report, error)
+        self._maybe_finish()
+        return False
+
+    def _maybe_finish(self):
+        """
+        End the run once the worker is done and every group is written.
+        """
+        if self.pending_end is None or self.batch_done < self.groups_dispatched:
+            return
+        run_report, error = self.pending_end
+        self.pending_end = None
         if not self._is_open():
-            return False
+            return
         self._set_running(False)
         report = self.batch_report
         if error is not None:
             self._set_status(_("Failed."))
             ErrorDialog(_("The generation failed"), str(error), parent=self.window)
-            return False
+            return
         report.cancelled = run_report.cancelled
         report.aborted = run_report.aborted
         self._set_status(" ".join(report_summary(report, MAX_CONSECUTIVE_ERRORS)))
@@ -952,7 +994,6 @@ class StorytellerTool(tool.Tool, ManagedWindow):
         if report.outcomes:
             self.result_button.show()
             self._show_result()
-        return False
 
     def _refresh_notes(self):
         """

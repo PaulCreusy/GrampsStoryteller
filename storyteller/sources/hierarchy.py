@@ -43,9 +43,9 @@ DEFAULT_BUDGETS: Dict[str, int] = {
     LEVEL_PROVINCE: 2500,
     LEVEL_REGION: 1500,
     LEVEL_COUNTRY: 2500,
-    LEVEL_PERIOD: 6000,
+    LEVEL_PERIOD: 7000,
     "commune_lead": 800,
-    "period_item": 1200,
+    "period_item": 1500,
 }
 
 # Characters of local (commune + department) excerpts above which the sources
@@ -60,6 +60,13 @@ MIN_HISTORY_CHARS = 400
 CURRENT_REGIONS_YEAR = 2016
 
 # (first year, last year, French title, English title)
+# Periods that changed the daily life of everyone (wars, revolution): they
+# keep a full excerpt when the landmarks span many periods
+MAJOR_PERIODS = {"Révolution française", "Guerre franco-allemande de 1870",
+                 "Première Guerre mondiale", "Seconde Guerre mondiale"}
+# Smallest excerpt of the other periods
+MIN_PERIOD_ITEM = 350
+
 FRANCE_PERIODS: List[Tuple[int, int, str, str]] = [
     (987, 1589, "Royaume de France", "Kingdom of France"),
     (1589, 1789, "Ancien Régime", "Ancien Régime"),
@@ -386,7 +393,7 @@ class SourceCollector:
     # Excerpts
 
     def _append(self, page: Page, level: str, text: str, seen: Set[str],
-                result: CollectedSources):
+                result: CollectedSources, span: str = ""):
         """
         Register an excerpt if it is new and not empty.
 
@@ -402,11 +409,14 @@ class SourceCollector:
             Titles already used.
         result : CollectedSources
             Result to complete.
+        span : str
+            Years of a national period.
         """
         if not text.strip() or page.title in seen:
             return
         seen.add(page.title)
-        result.extracts.append(SourceExtract(title=page.title, level=level, url=page.url, text=text))
+        result.extracts.append(SourceExtract(title=page.title, level=level, url=page.url, text=text,
+                                             span=span))
 
     def _add_commune(self, page: Page, low: Optional[int], high: Optional[int], seen: Set[str],
                      result: CollectedSources):
@@ -492,12 +502,18 @@ class SourceCollector:
         periods = [p for p in FRANCE_PERIODS if p[0] <= last_year and p[1] >= first_year]
         if not periods:
             return
-        item_budget = min(self.budgets["period_item"], self.budgets[LEVEL_PERIOD] // len(periods))
-        for _first, _last, title_fr, title_en in periods:
+        item = self.budgets["period_item"]
+        majors = sum(1 for p in periods if p[2] in MAJOR_PERIODS)
+        minors = len(periods) - majors
+        remaining = self.budgets[LEVEL_PERIOD] - majors * item
+        minor_budget = min(item, max(MIN_PERIOD_ITEM, remaining // minors)) if minors else 0
+        for first, last, title_fr, title_en in periods:
             title = title_fr if self.lang == "fr" else title_en
             self.progress(title)
             page = self.client.get_page(title)
             if not self._valid(page, None):
                 continue
-            self._append(page, LEVEL_PERIOD, lead_text(parse_sections(page.text), item_budget),
-                         seen, result)
+            budget = item if title_fr in MAJOR_PERIODS else minor_budget
+            span = "%d–%d" % (first, last) if last < 2100 else "%d–" % first
+            self._append(page, LEVEL_PERIOD, lead_text(parse_sections(page.text), budget),
+                         seen, result, span)

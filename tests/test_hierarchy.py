@@ -137,3 +137,19 @@ def test_thin_department_history_uses_the_history_article():
     assert "1200" not in by_title["Histoire de la Haute-Saône"].text
     assert not any("fusion" in e.text for e in result.extracts)
     assert "Belle Époque" in wiki.requested
+
+
+def test_wars_keep_a_full_excerpt_among_many_periods():
+    lead = "Introduction de la période. " * 200
+    titles = ["Troisième République (France)", "Belle Époque", "Première Guerre mondiale",
+              "Entre-deux-guerres", "Seconde Guerre mondiale", "Régime de Vichy",
+              "Gouvernement provisoire de la République française",
+              "Quatrième République (France)", "Cinquième République (France)"]
+    wiki = FakeWikipedia({title: lead for title in titles})
+    place = PlaceInfo(name="Inconnu", country="France", code="59112")
+    result = SourceCollector(wiki).collect(_request(place, years=(1885, 1962)))
+    periods = {e.title: e for e in result.extracts if e.level == "period"}
+    war, other = periods["Première Guerre mondiale"], periods["Belle Époque"]
+    assert war.span == "1914–1918" and periods["Cinquième République (France)"].span == "1958–"
+    assert len(war.text) > 2 * len(other.text)
+    assert sum(len(e.text) for e in periods.values()) <= 7000

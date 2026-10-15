@@ -11,8 +11,8 @@ anonymized request -> Wikipedia sources -> prompt -> LLM -> checks.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
-from typing import Callable, List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Callable, Dict, List, Optional, Tuple
 
 # Local imports #
 from . import prompts
@@ -24,7 +24,9 @@ from .llm.registry import PRESETS, create_provider
 from .models import CollectedSources, ContextRequest, GenerationResult, ValidationReport
 from .sources.hierarchy import SourceCollector
 from .sources.wikipedia import WikipediaClient
-from .validation import check_locally, messages, parse_llm_validation
+from .validation import (
+    answer_excerpt, check_locally, drop_unfounded_cg_problems, messages, parse_llm_validation,
+    repair_cg_tags, tags_balanced, tidy_problem)
 
 #############
 # Constants #
@@ -58,11 +60,14 @@ class PreparedPrompt:
         User message.
     sources : CollectedSources
         Excerpts used in the message.
+    variables : dict
+        Template variables, reused by the validation and correction prompts.
     """
 
     system: str
     user: str
     sources: CollectedSources
+    variables: Dict[str, str] = field(default_factory=dict)
 
 
 class StoryPipeline:
@@ -153,7 +158,7 @@ class StoryPipeline:
         user = prompts.render(
             prompts.template_or_default(self.settings["user_prompt"], "user", self.lang),
             variables)
-        return PreparedPrompt(system=system, user=user, sources=sources)
+        return PreparedPrompt(system=system, user=user, sources=sources, variables=variables)
 
     def generate(self, request: ContextRequest, use_cache: bool = True) -> GenerationResult:
         """
@@ -183,11 +188,13 @@ class StoryPipeline:
                                 prepared.system, prepared.user])
         cached = self.cache.get("llm", cache_key) if use_cache else None
         if cached:
-            text, truncated, model = cached["text"], cached["truncated"], cached["model"]
+            text, truncated, model = (repair_cg_tags(cached["text"]), cached["truncated"],
+                                      cached["model"])
         else:
             self.progress(provider.model)
             response = provider.generate(prepared.system, prepared.user)
-            text, truncated, model = response.text, response.truncated, response.model
+            text, truncated, model = (repair_cg_tags(response.text), response.truncated,
+                                      response.model)
             self.cache.set("llm", cache_key, {"text": text, "truncated": truncated, "model": model})
 
         report = self._check(text, truncated, request, prepared)
@@ -264,11 +271,8 @@ class StoryPipeline:
         texts = messages(self.lang)
         template = prompts.template_or_default(self.settings["validation_prompt"], "validation",
                                                self.lang)
-        user = prompts.render(template, {
-            "sources": prompts.format_sources(prepared.sources.extracts, self.lang),
-            "texte": text,
-            "langue": self._language_name(),
-        })
+        user = prompts.render(template, dict(prepared.variables, texte=text,
+                                             langue=self._language_name()))
         self.progress("validation")
         try:
             response = self.provider.generate(
@@ -279,13 +283,16 @@ class StoryPipeline:
         report.llm_checked = True
         parsed = parse_llm_validation(response.text)
         if parsed is None:
-            report.warnings.append(texts["llm_invalid"])
+            report.warnings.append(texts["llm_truncated"] if response.truncated
+                                   else texts["llm_invalid"] % answer_excerpt(response.text))
             report.llm_problems += 1
             return []
-        report.llm_problems += len(parsed[1])
-        for problem in parsed[1]:
+        problems = [tidy_problem(p, self.lang)
+                    for p in drop_unfounded_cg_problems(text, parsed[1])]
+        report.llm_problems += len(problems)
+        for problem in problems:
             report.warnings.append(texts["llm_problem"] % problem)
-        return parsed[1]
+        return problems
 
     def _correct(self, text: str, problems: List[str], request: ContextRequest,
                  prepared: PreparedPrompt,
@@ -316,24 +323,26 @@ class StoryPipeline:
         texts = messages(self.lang)
         template = prompts.template_or_default(self.settings["correction_prompt"], "correction",
                                                self.lang)
-        user = prompts.render(template, {
-            "sources": prompts.format_sources(prepared.sources.extracts, self.lang),
-            "texte": text,
-            "problemes": "\n".join("- %s" % problem for problem in problems),
-            "langue": self._language_name(),
-        })
+        user = prompts.render(template, dict(
+            prepared.variables, texte=text, langue=self._language_name(),
+            problemes="\n".join("- %s" % problem for problem in problems)))
         self.progress("correction")
         try:
             response = self.provider.generate(prepared.system, user)
         except LLMError as exc:
             report.warnings.append(texts["correction_failed"] % exc)
             return None
-        new_report = self._check(response.text, response.truncated, request, prepared)
+        corrected = repair_cg_tags(response.text)
+        new_report = self._check(corrected, response.truncated, request, prepared)
         if not new_report.ok or response.truncated:
             reason = "; ".join(new_report.errors) or texts["truncated"]
             report.warnings.append(texts["correction_failed"] % reason)
             return None
+        if tags_balanced(text) and not tags_balanced(corrected):
+            # General knowledge would be presented as sourced
+            report.warnings.append(texts["correction_failed"] % texts["correction_tags"])
+            return None
         new_report.corrected_problems = list(problems)
         # Check the corrected text again so that the report tells what remains
-        self._validate_with_llm(response.text, prepared, new_report)
-        return response.text, new_report
+        self._validate_with_llm(corrected, prepared, new_report)
+        return corrected, new_report

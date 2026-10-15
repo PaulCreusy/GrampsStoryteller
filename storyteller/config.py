@@ -34,7 +34,7 @@ DEFAULTS: Dict[str, Any] = {
     "send_temperature": True,
     "max_tokens": 8000,
     "language": "fr",
-    "length_words": 250,
+    "length_words": 300,
     "include_occupation": False,
     "llm_validation": False,
     # Rewrite the text when the LLM validation finds problems

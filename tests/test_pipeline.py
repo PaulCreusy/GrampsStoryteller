@@ -111,9 +111,19 @@ def test_llm_validation_is_optional(isolated_dirs):
     result = pipeline.generate(_request())
     assert len(provider.prompts) == 2
     assert "Texte [1]." in provider.prompts[1][1]
+    assert "1832 – Brest (Finistère, France)" in provider.prompts[1][1]
     assert result.validation.llm_checked
     assert result.validation.llm_problems == 1
     assert any("Phrase 2 inventée" in w for w in result.validation.warnings)
+
+
+def test_unreadable_validation_is_explained(isolated_dirs):
+    settings = Settings()
+    settings["llm_validation"] = True
+    provider = FakeProvider(["Texte.", "Je ne sais pas répondre en JSON."])
+    result = StoryPipeline(settings, cache=DiskCache(None), wiki_client=FakeWikipedia(PAGES),
+                           provider=provider).generate(_request())
+    assert any("Je ne sais pas répondre en JSON." in w for w in result.validation.warnings)
 
 
 def test_auto_correction_rewrites_the_flagged_text(isolated_dirs):
@@ -160,13 +170,29 @@ def test_failed_correction_keeps_the_initial_text(isolated_dirs):
     assert not provider.texts and len(provider.prompts) == 2
 
 
+def test_correction_losing_the_general_knowledge_marks_is_rejected(isolated_dirs):
+    settings = Settings()
+    settings["llm_validation"] = True
+    settings["auto_correction"] = True
+    provider = FakeProvider([
+        "Texte. <cg>Les maisons sont en briques.</cg> Phrase fausse.",
+        '{"ok": false, "problemes": ["« Phrase fausse » : absente"]}',
+        "Texte. Les maisons sont en briques.</cg",
+    ])
+    result = StoryPipeline(settings, cache=DiskCache(None), wiki_client=FakeWikipedia(PAGES),
+                           provider=provider).generate(_request())
+    assert result.original_text is None
+    assert "<cg>Les maisons" in result.text
+    assert any("connaissances générales a été perdu" in w for w in result.validation.warnings)
+
+
 def test_custom_prompts_are_used(isolated_dirs):
     settings = Settings()
     settings["user_prompt"] = "R={reperes} L={langue} N={longueur} J={\"json\": 1}"
     provider = FakeProvider(["ok"])
     StoryPipeline(settings, cache=DiskCache(None), wiki_client=FakeWikipedia(PAGES),
                   provider=provider).generate(_request())
-    assert provider.prompts[0][1] == ("R=- 1832 – Brest (Finistère, France) L=français N=250 "
+    assert provider.prompts[0][1] == ("R=- 1832 – Brest (Finistère, France) L=français N=300 "
                                       "J={\"json\": 1}")
 
 
