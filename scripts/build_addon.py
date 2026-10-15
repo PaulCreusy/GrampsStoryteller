@@ -7,6 +7,10 @@ Output (committed, then served through raw.githubusercontent.com):
     addons/gramps<MAJOR><MINOR>/download/GrampsStoryteller.addon.tgz
     addons/gramps<MAJOR><MINOR>/listings/addons-<lang>.json
 
+The translations (po/<lang>-local.po) are compiled into the archive as
+locale/<lang>/LC_MESSAGES/addon.mo, and the listing of a translated
+language carries the translated name and description.
+
 The archive is reproducible (fixed owners, dates and order) so that the CI
 can check that the committed files match the sources.
 
@@ -27,6 +31,10 @@ import os
 import sys
 import tarfile
 import types
+
+# Local imports #
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import i18n  # noqa: E402
 
 #############
 # Constants #
@@ -115,6 +123,44 @@ def archive_members() -> list:
     return [m.replace(os.sep, "/") for m in members]
 
 
+def compiled_translations() -> dict:
+    """
+    Compile the translations of the addon.
+
+    Returns
+    -------
+    dict
+        Path inside the addon directory -> content of the .mo file.
+    """
+    return {"locale/%s/LC_MESSAGES/addon.mo" % lang: i18n.compile_mo(i18n.read_po(path))
+            for lang, path in i18n.po_files().items()}
+
+
+def translate_listing(lang: str, meta: dict) -> dict:
+    """
+    Return the name and description of the addon in a language.
+
+    Parameters
+    ----------
+    lang : str
+        Listing language (e.g. "fr" or "pt_BR").
+    meta : dict
+        Metadata of the .gpr.py.
+
+    Returns
+    -------
+    dict
+        Name ("n") and description ("d").
+    """
+    path = i18n.po_files().get(lang) or i18n.po_files().get(lang.split("_")[0])
+    catalog = {}
+    if path:
+        catalog = {e.msgid: e.msgstr for e in i18n.read_po(path)
+                   if e.msgstr and not e.obsolete and "fuzzy" not in e.flags}
+    return {"n": catalog.get(meta["name"], meta["name"]),
+            "d": catalog.get(meta["description"], meta["description"])}
+
+
 def build_archive(path: str):
     """
     Write a reproducible .tgz of the addon.
@@ -136,6 +182,10 @@ def build_archive(path: str):
         for member in archive_members():
             tar.add(os.path.join(REPO_ROOT, member), arcname="%s/%s" % (ADDON_DIR, member),
                     filter=reset)
+        for member, content in sorted(compiled_translations().items()):
+            info = reset(tarfile.TarInfo("%s/%s" % (ADDON_DIR, member)))
+            info.size = len(content)
+            tar.addfile(info, io.BytesIO(content))
     with open(path, "wb") as raw:
         with gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as gz:
             gz.write(buffer.getvalue())
@@ -166,18 +216,19 @@ def main(argv=None):
     tgz_name = "%s.addon.tgz" % ADDON_DIR
     build_archive(os.path.join(download_dir, tgz_name))
 
-    listing = [{
-        "t": TOOL_PTYPE,
-        "i": meta["id"],
-        "n": meta["name"],
-        "v": meta["version"],
-        "g": args.gramps_version,
-        "d": meta["description"],
-        "z": tgz_name,
-        "s": STATUS_STABLE,
-        "a": AUDIENCE_EVERYONE,
-    }]
     for lang in LANGUAGES:
+        texts = translate_listing(lang, meta)
+        listing = [{
+            "t": TOOL_PTYPE,
+            "i": meta["id"],
+            "n": texts["n"],
+            "v": meta["version"],
+            "g": args.gramps_version,
+            "d": texts["d"],
+            "z": tgz_name,
+            "s": STATUS_STABLE,
+            "a": AUDIENCE_EVERYONE,
+        }]
         with open(os.path.join(listings_dir, "addons-%s.json" % lang), "w",
                   encoding="utf-8", newline="\n") as file:
             json.dump(listing, file, indent=2, ensure_ascii=False)

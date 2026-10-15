@@ -37,10 +37,13 @@ DEFAULTS: Dict[str, Any] = {
     "length_words": 250,
     "include_occupation": False,
     "llm_validation": False,
+    # Rewrite the text when the LLM validation finds problems
+    "auto_correction": False,
     # None means "use the default prompt of the language"
     "system_prompt": None,
     "user_prompt": None,
     "validation_prompt": None,
+    "correction_prompt": None,
 }
 
 #############

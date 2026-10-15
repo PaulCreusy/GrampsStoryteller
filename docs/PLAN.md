@@ -5,6 +5,16 @@ contexte historique** du lieu et de l'époque où elle a vécu, à partir de sou
 Wikipédia, sans jamais transmettre d'informations identifiantes à un service
 externe. Le texte est stocké dans une note attachée à la personne.
 
+## État d'avancement
+
+| Phase | État |
+|---|---|
+| 0 à 4 — socle, extraction, sources, LLM, génération | Terminées (0.2.x) |
+| Correction automatique après la validation par LLM | Terminée (0.3.0) |
+| 5 — Traitement par lot | Terminée (0.3.0) |
+| 6 — Traduction française, README, procédure de release | Terminée (0.3.0) ; pas d'icône (non prise en charge pour les outils Gramps) |
+| 7 — Gramps 5.2 et 5.1 | À faire |
+
 ## 1. Principes
 
 ### 1.1 Confidentialité
@@ -142,6 +152,12 @@ Voir §4.
 - Écriture / remplacement de la note (cf. §1.3).
 
 ### Phase 5 — Traitement par lot
+
+Réalisé : portée (personne active, sélection, ascendants/descendants sur N
+générations, filtre personnalisé, tout l'arbre), option « ignorer les personnes
+ayant déjà une note », regroupement par repères identiques, estimation et
+confirmation, arrêt à la demande ou après 3 échecs consécutifs, journal par
+personne.
 
 - Sélection : personne active, sélection de la vue Personnes,
   ascendants/descendants sur N générations, filtre personnalisé Gramps, tout

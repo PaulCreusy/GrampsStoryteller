@@ -33,10 +33,13 @@ def test_metadata_and_members():
     meta = builder.read_gpr_metadata()
     assert meta["id"] == "gramps_storyteller"
     assert meta["toolclass"] == "StorytellerTool"
+    from storyteller import __version__
+    assert meta["version"] == __version__
     members = builder.archive_members()
     assert "GrampsStoryteller.gpr.py" in members
     assert "storyteller/prompts/system_fr.txt" in members
     assert "storyteller/gui/tool_window.py" in members
+    assert "storyteller/prompts/correction_fr.txt" in members
     assert not any("__pycache__" in m or m.startswith("tests") for m in members)
 
 

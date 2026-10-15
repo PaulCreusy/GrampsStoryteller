@@ -45,16 +45,19 @@ jobs:
           "$RUNNER_TEMP/venv/bin/python" -m pytest -q -p no:logging tests
 
   addon:
-    name: Addon package is up to date
+    name: Addon package and translations are up to date
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Check that the translations are complete
+        run: python scripts/i18n.py check
+      - run: python scripts/i18n.py update
       - run: python scripts/build_addon.py
-      - name: Check that the committed package matches the sources
+      - name: Check that the committed package and translations match the sources
         run: |
-          git status --porcelain addons
-          git diff --exit-code addons
-          test -z "$(git status --porcelain addons)"
+          git status --porcelain addons po
+          git diff --exit-code addons po
+          test -z "$(git status --porcelain addons po)"
