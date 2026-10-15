@@ -130,3 +130,16 @@ def test_general_knowledge_is_not_blamed_for_missing_from_the_excerpts():
         "« la première usine de France » : absent des extraits",
     ]
     assert drop_unfounded_cg_problems(text, problems) == problems[1:]
+
+
+def test_stray_quotes_do_not_hide_general_knowledge():
+    from storyteller.validation import drop_unfounded_cg_problems, tidy_problem
+    text = ("Le Nord est industriel. <cg>Cette région est historiquement caractérisée par une "
+            "forte activité industrielle et agricole.</cg>")
+    problem = ('Cette région est historiquement caractérisée par une forte activité '
+               'industrielle et agricole." : passage hors balises non contenu dans les extraits')
+    assert drop_unfounded_cg_problems(text, [problem]) == []
+    assert tidy_problem('Le département est marqué" : non sourcé') == \
+        "« Le département est marqué » : non sourcé"
+    assert tidy_problem("« Lille » : absent") == "« Lille » : absent"
+    assert tidy_problem("Digression", "en") == "Digression"

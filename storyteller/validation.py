@@ -28,6 +28,7 @@ _CITATION = re.compile(r"\[(\d+(?:\s*[,;–-]\s*\d+)*)\]")
 _CG_SPLIT = re.compile(r"(</?cg>)", re.IGNORECASE)
 _YEAR = re.compile(r"(?<![\d.,])(1[0-9]{3}|20[0-9]{2})(?!\d)")
 _URL = re.compile(r"https?://\S+")
+_QUOTE_CHARS = "\"'«»‘’“”"
 _QUOTED = re.compile(r"«\s*(.+?)\s*»|‘(.+?)’|“(.+?)”")
 # Reasons meaning "not in the excerpts", which do not apply to general knowledge
 _ABSENT = re.compile(r"absent|non contenu|pas contenu|ne figure|pas dans les extraits|non sourc|"
@@ -404,11 +405,40 @@ def _split_problem(problem: str) -> Tuple[str, str]:
         and explanation.
     """
     match = _QUOTED.search(problem)
-    if match:
+    if match and match.start() <= 2:
         passage = next(group for group in match.groups() if group)
-        return passage, problem[match.end():]
-    parts = re.split(r"\s*:\s", problem, maxsplit=1)
-    return parts[0], parts[1] if len(parts) > 1 else ""
+        reason = problem[match.end():]
+    else:
+        parts = re.split(r"\s*:\s", problem, maxsplit=1)
+        passage, reason = parts[0], parts[1] if len(parts) > 1 else ""
+    # Stray quotes of an almost-JSON answer
+    passage = passage.strip(_QUOTE_CHARS + " ")
+    reason = reason.strip().lstrip(":").strip()
+    return passage, reason
+
+
+def tidy_problem(problem: str, lang: str = "fr") -> str:
+    """
+    Rewrite a validation problem as « passage » : explanation.
+
+    Parameters
+    ----------
+    problem : str
+        Problem as written by the model.
+    lang : str
+        Language of the quotes.
+
+    Returns
+    -------
+    str
+        Problem with balanced quotes.
+    """
+    passage, reason = _split_problem(problem)
+    if not reason:
+        return problem.strip()
+    if lang == "fr":
+        return "« %s » : %s" % (passage, reason)
+    return "‘%s’: %s" % (passage, reason)
 
 
 def drop_unfounded_cg_problems(text: str, problems: List[str]) -> List[str]:

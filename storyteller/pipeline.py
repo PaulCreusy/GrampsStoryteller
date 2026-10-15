@@ -25,7 +25,8 @@ from .models import CollectedSources, ContextRequest, GenerationResult, Validati
 from .sources.hierarchy import SourceCollector
 from .sources.wikipedia import WikipediaClient
 from .validation import (
-    answer_excerpt, check_locally, drop_unfounded_cg_problems, messages, parse_llm_validation)
+    answer_excerpt, check_locally, drop_unfounded_cg_problems, messages, parse_llm_validation,
+    tidy_problem)
 
 #############
 # Constants #
@@ -284,7 +285,8 @@ class StoryPipeline:
                                    else texts["llm_invalid"] % answer_excerpt(response.text))
             report.llm_problems += 1
             return []
-        problems = drop_unfounded_cg_problems(text, parsed[1])
+        problems = [tidy_problem(p, self.lang)
+                    for p in drop_unfounded_cg_problems(text, parsed[1])]
         report.llm_problems += len(problems)
         for problem in problems:
             report.warnings.append(texts["llm_problem"] % problem)
