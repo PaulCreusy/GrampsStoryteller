@@ -6,11 +6,11 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: GrampsStoryteller.gpr.py:24 storyteller/gui/tool_window.py:142
+#: GrampsStoryteller.gpr.py:32 storyteller/gui/tool_window.py:142
 msgid "Storyteller: historical context"
 msgstr "Storyteller : contexte historique"
 
-#: GrampsStoryteller.gpr.py:25
+#: GrampsStoryteller.gpr.py:33
 msgid "Writes, in a note, the sourced historical context of the places and periods where a person lived, without sending any identifying data."
 msgstr "Rédige dans une note le contexte historique sourcé des lieux et des époques où une personne a vécu, sans transmettre aucune donnée identifiante."
 

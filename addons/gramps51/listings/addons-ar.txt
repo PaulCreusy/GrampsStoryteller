@@ -1,0 +1,1 @@
+{'t': 'Tool', 'i': 'gramps_storyteller', 'n': 'Storyteller: historical context', 'v': '0.6.0', 'g': '5.1', 'd': 'Writes, in a note, the sourced historical context of the places and periods where a person lived, without sending any identifying data.', 'z': 'GrampsStoryteller.addon.tgz'}

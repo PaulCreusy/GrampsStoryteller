@@ -13,7 +13,7 @@ externe. Le texte est stocké dans une note attachée à la personne.
 | Correction automatique après la validation par LLM | Terminée (0.3.0) |
 | 5 — Traitement par lot | Terminée (0.3.0) |
 | 6 — Traduction française, README, procédure de release | Terminée (0.3.0) ; pas d'icône (non prise en charge pour les outils Gramps) |
-| 7 — Gramps 5.2 et 5.1 | À faire |
+| 7 — Gramps 5.2 et 5.1 | Terminée (0.6.0) |
 
 ## 1. Principes
 
@@ -61,7 +61,7 @@ externe. Le texte est stocké dans une note attachée à la personne.
 
 | Sujet | Choix |
 |---|---|
-| Cible | Gramps 6.0, puis 5.2 et 5.1 (phase finale) |
+| Cible | Gramps 5.1, 5.2 et 6.0 |
 | Plugin | `register(TOOL, …)`, `category=TOOL_DBPROC`, `tool_modes=[TOOL_MODE_GUI]` |
 | HTTP | `urllib.request` (stdlib) — aucune dépendance à installer |
 | Fournisseurs LLM | Compatible OpenAI par défaut (OpenAI, Mistral, Groq, OpenRouter, Ollama, LM Studio), Anthropic, Gemini |
@@ -179,13 +179,18 @@ personne.
 
 ### Phase 7 — Support Gramps 5.2 et 5.1
 
-- `build_addon.py --gramps-version {5.1,5.2,6.0}` → `addons/gramps51/`,
-  `gramps52/`, `gramps60/`.
+- `build_addon.py` construit `addons/gramps51/`, `gramps52/` et `gramps60/`
+  (même archive ; listings `.txt`, un dict Python par ligne, pour 5.1 et
+  `.json` pour 5.2 et 6.0, avec le lien d'aide `h`).
 - Uniquement l'API objet (`get_person_from_handle`…), jamais les données
   brutes (tuples en 5.x, JSON en 6.0).
-- Audit des écarts d'API : filtres, `probably_alive`, `NoteType` personnalisé,
-  gestionnaire de config.
-- Matrice CI sur les trois versions ; README avec les trois URL de projet.
+- Audit des écarts d'API : filtres, `probably_alive`, traducteur d'addon,
+  `NoteType` personnalisé et outils identiques ; seul écart, Gramps 5.1 refuse
+  `help_url` hors gramplet (le `.gpr.py` ne le passe pas en 5.1).
+- Gramps 5.1 ne gère qu'un dépôt d'addons : installation en remplaçant
+  temporairement « Where to check », ou manuelle.
+- Matrice CI sur Gramps 5.1.6, 5.2.4 et 6.0.4 ; tests du cœur sous Python 3.9
+  et 3.13 (vérifiés aussi sous 3.8).
 
 ## 4. Contexte sourcé — détail
 
