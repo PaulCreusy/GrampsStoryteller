@@ -14,7 +14,7 @@ from typing import List
 
 # Local imports #
 from ..http import HttpError, request_json
-from .base import LLMError, LLMProvider, LLMResponse
+from .base import LLMError, LLMProvider, LLMResponse, strip_reasoning
 
 ###########
 # Classes #
@@ -171,6 +171,7 @@ class OpenAICompatibleProvider(LLMProvider):
             raise LLMError("Unexpected answer: %s" % str(answer)[:300]) from exc
         if isinstance(content, list):
             content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
+        content = strip_reasoning(content)
         if not content.strip():
             raise LLMError("The model returned an empty text (finish reason: %s)."
                            % choice.get("finish_reason"))

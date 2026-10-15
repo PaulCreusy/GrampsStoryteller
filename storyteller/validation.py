@@ -17,6 +17,7 @@ import re
 from typing import List, Optional, Set, Tuple
 
 # Local imports #
+from .llm.base import strip_reasoning
 from .models import ValidationReport
 
 #############
@@ -27,6 +28,8 @@ _CITATION = re.compile(r"\[(\d+(?:\s*[,;–-]\s*\d+)*)\]")
 _CG_SPLIT = re.compile(r"(</?cg>)", re.IGNORECASE)
 _YEAR = re.compile(r"(?<![\d.,])(1[0-9]{3}|20[0-9]{2})(?!\d)")
 _URL = re.compile(r"https?://\S+")
+_LOOSE_OK = re.compile(r'"?ok"?\s*:\s*"?(true|false)', re.IGNORECASE)
+_LOOSE_PROBLEMS = re.compile(r'"?(?:problemes|problèmes|problems)"?\s*:\s*\[', re.IGNORECASE)
 
 _MESSAGES = {
     "fr": {
@@ -39,7 +42,9 @@ _MESSAGES = {
                     "italique dans la note.",
         "years": "Années citées comme sourcées mais absentes des extraits : %s.",
         "url": "Le texte contient des URL, elles ont été retirées.",
-        "llm_invalid": "La validation par LLM a renvoyé une réponse illisible.",
+        "llm_invalid": "La validation par LLM a renvoyé une réponse illisible : « %s »",
+        "llm_truncated": "La réponse de la validation par LLM a été coupée par la limite de "
+                         "tokens : augmentez « Tokens max ».",
         "llm_problem": "Validation LLM : %s",
         "correction_failed": "La correction automatique a échoué (%s) : le texte initial est "
                              "conservé.",
@@ -52,7 +57,9 @@ _MESSAGES = {
         "cg_count": "%d general knowledge passage(s) (unsourced), shown in italics in the note.",
         "years": "Years cited as sourced but missing from the excerpts: %s.",
         "url": "The text contained URLs, they were removed.",
-        "llm_invalid": "The LLM validation returned an unreadable answer.",
+        "llm_invalid": "The LLM validation returned an unreadable answer: \"%s\"",
+        "llm_truncated": "The answer of the LLM validation was cut by the token limit: "
+                         "increase \"Max tokens\".",
         "llm_problem": "LLM validation: %s",
         "correction_failed": "The automatic correction failed (%s): the initial text is kept.",
     },
@@ -212,32 +219,163 @@ def check_locally(text: str, source_count: int, sources_text: str, allowed_years
     return report
 
 
+def _verdict(data: dict) -> Optional[Tuple[bool, List[str]]]:
+    """
+    Read the verdict and the problems of a decoded validation answer.
+
+    Parameters
+    ----------
+    data : dict
+        Decoded JSON object.
+
+    Returns
+    -------
+    tuple of (bool, list of str) or None
+        Verdict and problems, None when the object is not a verdict.
+    """
+    if not any(key in data for key in ("ok", "problemes", "problèmes", "problems")):
+        return None
+    problems = data.get("problemes", data.get("problèmes", data.get("problems", [])))
+    if not isinstance(problems, list):
+        problems = [problems] if problems else []
+    problems = [str(p).strip() for p in problems if str(p).strip()]
+    ok = data.get("ok", not problems)
+    if isinstance(ok, str):
+        ok = ok.strip().lower() in ("true", "yes", "oui")
+    return bool(ok) and not problems, problems
+
+
+def _decoded_objects(text: str) -> List[dict]:
+    """
+    Decode every JSON object found in a text.
+
+    Parameters
+    ----------
+    text : str
+        Text containing JSON objects among other words.
+
+    Returns
+    -------
+    list of dict
+        Decoded objects, in order.
+    """
+    decoder = json.JSONDecoder()
+    objects = []
+    position = text.find("{")
+    while position >= 0:
+        try:
+            value, end = decoder.raw_decode(text, position)
+        except ValueError:
+            position = text.find("{", position + 1)
+            continue
+        if isinstance(value, dict):
+            objects.append(value)
+        position = text.find("{", end)
+    return objects
+
+
+def _loose_verdict(text: str) -> Optional[Tuple[bool, List[str]]]:
+    """
+    Read a verdict from an almost-JSON answer, e.g. with unescaped quotes
+    inside the problems.
+
+    Parameters
+    ----------
+    text : str
+        Answer.
+
+    Returns
+    -------
+    tuple of (bool, list of str) or None
+        Verdict and problems, None when nothing looks like a verdict.
+    """
+    ok_match = _LOOSE_OK.search(text)
+    list_match = _LOOSE_PROBLEMS.search(text)
+    if list_match is None:
+        if ok_match is None:
+            return None
+        ok = ok_match.group(1).lower() == "true"
+        return (True, []) if ok else (False, [])
+    body = text[list_match.end():]
+    end = body.rfind("]")
+    if end < 0:
+        return None
+    body = body[:end].strip().rstrip(",").strip()
+    # Opening quote of the first item and closing quote of the last one
+    if body.startswith('"'):
+        body = body[1:]
+    if body.endswith('"'):
+        body = body[:-1]
+    problems = []
+    # Items are separated by a closing quote, a comma and an opening quote
+    for item in re.split(r'"\s*,\s*"', body) if body.strip() else []:
+        item = item.strip().replace('\\"', '"')
+        if item:
+            problems.append(item)
+    ok = ok_match.group(1).lower() == "true" if ok_match else not problems
+    return ok and not problems, problems
+
+
 def parse_llm_validation(raw: str) -> Optional[Tuple[bool, List[str]]]:
     """
     Parse the JSON answer of the validation prompt.
 
+    Small local models often wrap the JSON in reasoning or code fences, use
+    typographic quotes, leave trailing commas or quote passages with
+    unescaped double quotes: all these answers are accepted.
+
     Parameters
     ----------
     raw : str
-        Model answer, possibly wrapped in text or code fences.
+        Model answer.
 
     Returns
     -------
     tuple of (bool, list of str) or None
         Verdict and problems, None when the answer is unreadable.
     """
-    start, end = raw.find("{"), raw.rfind("}")
-    if start < 0 or end <= start:
-        return None
-    try:
-        data = json.loads(raw[start:end + 1])
-    except ValueError:
-        return None
-    if not isinstance(data, dict):
-        return None
-    problems = data.get("problemes", data.get("problems", []))
-    if not isinstance(problems, list):
-        problems = [str(problems)]
-    problems = [str(p) for p in problems if str(p).strip()]
-    ok = bool(data.get("ok", not problems)) and not problems
-    return ok, problems
+    text = strip_reasoning(raw)
+    for candidate in (text, _repair_json(text)):
+        verdicts = [v for v in (_verdict(o) for o in _decoded_objects(candidate)) if v]
+        if verdicts:
+            return verdicts[-1]
+    return _loose_verdict(_repair_json(text))
+
+
+def _repair_json(text: str) -> str:
+    """
+    Fix the most common JSON mistakes of small models.
+
+    Parameters
+    ----------
+    text : str
+        Answer.
+
+    Returns
+    -------
+    str
+        Answer with straight quotes and without trailing commas.
+    """
+    text = text.replace("\u201c", '"').replace("\u201d", '"')
+    text = re.sub(r",\s*([\]}])", r"\1", text)
+    return re.sub(r"\b(True|False)\b", lambda m: m.group(1).lower(), text)
+
+
+def answer_excerpt(raw: str, length: int = 160) -> str:
+    """
+    Return the beginning of an answer on one line, for an error message.
+
+    Parameters
+    ----------
+    raw : str
+        Answer.
+    length : int
+        Maximum number of characters.
+
+    Returns
+    -------
+    str
+        Excerpt.
+    """
+    text = " ".join(raw.split())
+    return text if len(text) <= length else text[:length] + "…"

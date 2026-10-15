@@ -78,6 +78,20 @@ def test_openai_retries_without_temperature(monkeypatch):
     assert response.truncated
 
 
+def test_local_model_reasoning_is_removed(monkeypatch):
+    fake = FakeHttp([
+        {"choices": [{"message": {"content": "<think>Je réfléchis {x}.</think>\nTexte."},
+                      "finish_reason": "stop"}]},
+        {"choices": [{"message": {"content": "<think>Je réfléchis sans fin"},
+                      "finish_reason": "length"}]},
+    ])
+    monkeypatch.setattr(openai_compat, "request_json", fake)
+    provider = create_provider("lmstudio", "", "qwen", None, None, 100)
+    assert provider.generate("s", "u").text == "Texte."
+    with pytest.raises(LLMError, match="empty"):
+        provider.generate("s", "u")
+
+
 def test_local_server_needs_no_key(monkeypatch):
     fake = FakeHttp([{"data": [{"id": "b"}, {"id": "a"}]}])
     monkeypatch.setattr(openai_compat, "request_json", fake)

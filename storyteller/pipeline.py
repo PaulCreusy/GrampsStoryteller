@@ -24,7 +24,7 @@ from .llm.registry import PRESETS, create_provider
 from .models import CollectedSources, ContextRequest, GenerationResult, ValidationReport
 from .sources.hierarchy import SourceCollector
 from .sources.wikipedia import WikipediaClient
-from .validation import check_locally, messages, parse_llm_validation
+from .validation import answer_excerpt, check_locally, messages, parse_llm_validation
 
 #############
 # Constants #
@@ -279,7 +279,8 @@ class StoryPipeline:
         report.llm_checked = True
         parsed = parse_llm_validation(response.text)
         if parsed is None:
-            report.warnings.append(texts["llm_invalid"])
+            report.warnings.append(texts["llm_truncated"] if response.truncated
+                                   else texts["llm_invalid"] % answer_excerpt(response.text))
             report.llm_problems += 1
             return []
         report.llm_problems += len(parsed[1])

@@ -116,6 +116,15 @@ def test_llm_validation_is_optional(isolated_dirs):
     assert any("Phrase 2 inventée" in w for w in result.validation.warnings)
 
 
+def test_unreadable_validation_is_explained(isolated_dirs):
+    settings = Settings()
+    settings["llm_validation"] = True
+    provider = FakeProvider(["Texte.", "Je ne sais pas répondre en JSON."])
+    result = StoryPipeline(settings, cache=DiskCache(None), wiki_client=FakeWikipedia(PAGES),
+                           provider=provider).generate(_request())
+    assert any("Je ne sais pas répondre en JSON." in w for w in result.validation.warnings)
+
+
 def test_auto_correction_rewrites_the_flagged_text(isolated_dirs):
     settings = Settings()
     settings["llm_validation"] = True
