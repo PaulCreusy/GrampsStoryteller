@@ -88,7 +88,7 @@ class NoteContent:
 
 def _clean(text: str) -> str:
     """
-    Remove URLs, markdown emphasis and extra blank lines.
+    Remove URLs, markdown emphasis, extra spaces and extra blank lines.
 
     Parameters
     ----------
@@ -102,6 +102,11 @@ def _clean(text: str) -> str:
     """
     text = strip_urls(text)
     text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+    # Tags removed later must not leave double spaces or a space before a
+    # punctuation mark ("briques <cg> et", "laitiers <cg>.")
+    text = re.sub(r"[ \t]+(</?cg>)[ \t]+", r" \1", text, flags=re.IGNORECASE)
+    text = re.sub(r"[ \t]+(</?cg>)(?=[.,;:!?])", r"\1", text, flags=re.IGNORECASE)
+    text = re.sub(r"[ \t]{2,}", " ", text)
     text = re.sub(r"[ \t]+\n", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()

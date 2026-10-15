@@ -201,7 +201,11 @@ class StoryPipeline:
         original_text = None
         if report.ok and self.settings["llm_validation"]:
             problems = self._validate_with_llm(text, prepared, report)
-            if problems and self.settings["auto_correction"]:
+            if problems and self.settings["auto_correction"] and not tags_balanced(text):
+                # The validation cannot tell sourced from general knowledge:
+                # a correction would delete general knowledge taken for sourced
+                report.warnings.append(messages(self.lang)["correction_skipped"])
+            elif problems and self.settings["auto_correction"]:
                 corrected = self._correct(text, problems, request, prepared, report)
                 if corrected is not None:
                     original_text, (text, report) = text, corrected

@@ -186,6 +186,21 @@ def test_correction_losing_the_general_knowledge_marks_is_rejected(isolated_dirs
     assert any("connaissances générales a été perdu" in w for w in result.validation.warnings)
 
 
+def test_no_correction_when_tags_are_misplaced(isolated_dirs):
+    settings = Settings()
+    settings["llm_validation"] = True
+    settings["auto_correction"] = True
+    provider = FakeProvider([
+        "Texte. Des maisons en briques <cg> et du pain <cg>.",
+        '{"ok": false, "problemes": ["« du pain » : absent"]}',
+    ])
+    result = StoryPipeline(settings, cache=DiskCache(None), wiki_client=FakeWikipedia(PAGES),
+                           provider=provider).generate(_request())
+    assert len(provider.prompts) == 2
+    assert result.original_text is None
+    assert any("Correction automatique non lancée" in w for w in result.validation.warnings)
+
+
 def test_custom_prompts_are_used(isolated_dirs):
     settings = Settings()
     settings["user_prompt"] = "R={reperes} L={langue} N={longueur} J={\"json\": 1}"

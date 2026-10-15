@@ -187,9 +187,9 @@ def test_search_keywords_match_whole_words():
              "France and World War I": "France mobilizes."}
     wiki = FakeWikipedia(pages, lang="en", search_results={
         "France World War I": ["France in World War II", "France and World War I"]})
-    page = SourceCollector(wiki)._period_page(None, (["Missing"], "France World War I",
-                                                     ["france", "world war i"]))
-    assert page.title == "France and World War I"
+    pages = SourceCollector(wiki)._period_pages(None, (["Missing"], "France World War I",
+                                                       ["france", "world war i"]))
+    assert [page.title for page in pages] == ["France and World War I"]
 
 
 def test_department_history_is_always_completed_when_room_remains():
@@ -214,3 +214,16 @@ def test_department_history_is_always_completed_when_room_remains():
     complement = by_title.get("Histoire du Nord-Pas-de-Calais", "")
     assert "première usine de France" in complement
     assert "grève des mineurs" not in complement  # already in the main excerpt
+
+
+def test_empty_period_article_falls_back_to_the_general_one():
+    pages = {
+        "France pendant la Première Guerre mondiale": "== Chronologie ==\nEn 1914, rien.",
+        "Première Guerre mondiale": "La Grande Guerre dure de 1914 à 1918.",
+    }
+    wiki = FakeWikipedia(pages)
+    result = SourceCollector(wiki).collect(
+        _request(PlaceInfo(name="Inconnu", country="France", code="29200"), years=(1900, 1930)))
+    titles = [e.title for e in result.extracts if e.level == "period"]
+    assert "Première Guerre mondiale" in titles
+    assert "France pendant la Première Guerre mondiale" not in titles

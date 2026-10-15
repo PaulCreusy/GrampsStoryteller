@@ -57,6 +57,9 @@ _MESSAGES = {
         "correction_failed": "La correction automatique a échoué (%s) : le texte initial est "
                              "conservé.",
         "correction_tags": "le marquage des connaissances générales a été perdu",
+        "correction_skipped": "Correction automatique non lancée : les balises <cg> du texte "
+                              "sont mal placées, la validation ne peut pas distinguer les "
+                              "connaissances générales.",
     },
     "en": {
         "empty": "The generated text is empty.",
@@ -72,6 +75,9 @@ _MESSAGES = {
         "llm_problem": "LLM validation: %s",
         "correction_failed": "The automatic correction failed (%s): the initial text is kept.",
         "correction_tags": "the general knowledge marking was lost",
+        "correction_skipped": "Automatic correction not run: the <cg> tags of the text are "
+                              "misplaced, so the validation cannot tell general knowledge "
+                              "apart.",
     },
 }
 

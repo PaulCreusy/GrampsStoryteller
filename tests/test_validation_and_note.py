@@ -151,3 +151,11 @@ def test_cut_tags_are_repaired():
     assert repair_cg_tags("<cg Texte.</cg>") == "<cg>Texte.</cg>"
     assert not tags_balanced("Texte.</cg>")
     assert tags_balanced("<cg>A</cg> B")
+
+
+def test_misplaced_tags_leave_no_double_space():
+    from storyteller.note_content import build_note_content
+    content = build_note_content("Un habitat en briques <cg> et du pain <cg>. Fin  ici.", [],
+                                 "P", "m", "fr")
+    first = content.text.split("\n")[0]
+    assert first == "Un habitat en briques et du pain. Fin ici."

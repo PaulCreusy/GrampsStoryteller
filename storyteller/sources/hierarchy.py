@@ -14,7 +14,7 @@ are always collected as a fallback.
 # Python imports #
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, Iterator, List, Optional, Set, Tuple
 
 # Local imports #
 from .. import fr_admin
@@ -600,24 +600,46 @@ class SourceCollector:
         for first, last, title_fr, title_en in periods:
             title = title_fr if self.lang == "fr" else title_en
             self.progress(title)
-            page = self._period_page(title, PERIOD_ARTICLES.get(title_fr, {}).get(self.lang))
-            if page is None:
-                continue
             budget = item if title_fr in MAJOR_PERIODS else minor_budget
             span = "%d–%d" % (first, last) if last < 2100 else "%d–" % first
-            self._append(page, LEVEL_PERIOD, lead_text(parse_sections(page.text), budget),
-                         seen, result, span)
+            self._append_first(self._period_pages(
+                title, PERIOD_ARTICLES.get(title_fr, {}).get(self.lang)), budget, seen, result,
+                span)
             if occupied and title_fr == "Première Guerre mondiale":
-                page = self._period_page(None, OCCUPATION_1914_ARTICLES.get(self.lang))
-                if page is not None:
-                    self._append(page, LEVEL_PERIOD, lead_text(parse_sections(page.text), item),
-                                 seen, result, span)
+                self._append_first(self._period_pages(
+                    None, OCCUPATION_1914_ARTICLES.get(self.lang)), item, seen, result, span)
 
-    def _period_page(self, general: Optional[str],
-                     spec: Optional[Tuple[List[str], str, List[str]]]) -> Optional[Page]:
+    def _append_first(self, pages: Iterator[Page], budget: int, seen: Set[str],
+                      result: CollectedSources, span: str):
         """
-        Find the article of a period: a specific article, a matching search
-        result, then the general article.
+        Add the lead of the first article giving a non-empty excerpt.
+
+        Parameters
+        ----------
+        pages : iterator of Page
+            Candidate articles, best first.
+        budget : int
+            Maximum number of characters.
+        seen : set of str
+            Titles already used.
+        result : CollectedSources
+            Result to complete.
+        span : str
+            Years of the period.
+        """
+        for page in pages:
+            if page.title in seen:
+                continue
+            text = lead_text(parse_sections(page.text), budget)
+            if text.strip():
+                self._append(page, LEVEL_PERIOD, text, seen, result, span)
+                return
+
+    def _period_pages(self, general: Optional[str],
+                      spec: Optional[Tuple[List[str], str, List[str]]]) -> Iterator[Page]:
+        """
+        Yield the candidate articles of a period: specific articles, matching
+        search results, then the general article.
 
         Parameters
         ----------
@@ -627,17 +649,17 @@ class SourceCollector:
             (specific titles, search query, keywords that a search result
             title must all contain).
 
-        Returns
-        -------
-        Page or None
-            Article.
+        Yields
+        ------
+        Page
+            Existing articles, best first.
         """
         if spec is not None:
             titles, query, keywords = spec
             for title in titles:
                 page = self.client.get_page(title)
                 if self._valid(page, None):
-                    return page
+                    yield page
             for title in self.client.search(query):
                 # Whole words: "world war i" must not match "world war ii"
                 normalized = " %s " % normalize(title)
@@ -645,8 +667,8 @@ class SourceCollector:
                        for keyword in keywords):
                     page = self.client.get_page(title)
                     if self._valid(page, None):
-                        return page
-        if general is None:
-            return None
-        page = self.client.get_page(general)
-        return page if self._valid(page, None) else None
+                        yield page
+        if general is not None:
+            page = self.client.get_page(general)
+            if self._valid(page, None):
+                yield page
