@@ -190,3 +190,27 @@ def test_search_keywords_match_whole_words():
     page = SourceCollector(wiki)._period_page(None, (["Missing"], "France World War I",
                                                      ["france", "world war i"]))
     assert page.title == "France and World War I"
+
+
+def test_department_history_is_always_completed_when_room_remains():
+    pages = {
+        "Nord (département français)": "Le Nord est un département.\n== Histoire ==\n"
+            "Plusieurs réorganisations interviennent : l'arrondissement d'Hazebrouck est "
+            "supprimé en 1926 et intégré à celui de Dunkerque, après d'autres changements.\n"
+            "En 1941, la grève des mineurs prive l'occupant de charbon pendant deux semaines, "
+            "ce qui entraîne des centaines d'arrestations et des déportations.\n"
+            "En 1925, les houillères du bassin emploient des dizaines de milliers de mineurs "
+            "venus de toute l'Europe, et les cités ouvrières s'étendent autour des fosses.",
+        "Histoire du Nord-Pas-de-Calais": "Intro.\n== XIXe et XXe siècles ==\n"
+            "En 1900, le Nord est la première usine de France, avec ses filatures et ses mines.\n"
+            "En 1941, la grève des mineurs prive l'occupant de charbon pendant deux semaines, "
+            "ce qui entraîne des centaines d'arrestations et des déportations.",
+    }
+    wiki = FakeWikipedia(pages, search_results={"histoire Nord": ["Histoire du Nord-Pas-de-Calais"]})
+    place = PlaceInfo(name="Inconnu", department="Nord", country="France", code="59112")
+    result = SourceCollector(wiki).collect(_request(place, years=(1884, 1960)))
+    by_title = {e.title: e.text for e in result.extracts}
+    assert "Nord (département français)" in by_title
+    complement = by_title.get("Histoire du Nord-Pas-de-Calais", "")
+    assert "première usine de France" in complement
+    assert "grève des mineurs" not in complement  # already in the main excerpt

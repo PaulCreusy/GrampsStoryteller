@@ -3,7 +3,7 @@
     "t": 2,
     "i": "gramps_storyteller",
     "n": "Storyteller : contexte historique",
-    "v": "0.5.0",
+    "v": "0.5.1",
     "g": "6.0",
     "d": "Rédige dans une note le contexte historique sourcé des lieux et des époques où une personne a vécu, sans transmettre aucune donnée identifiante.",
     "z": "GrampsStoryteller.addon.tgz",

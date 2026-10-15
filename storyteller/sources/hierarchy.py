@@ -52,9 +52,10 @@ DEFAULT_BUDGETS: Dict[str, int] = {
 # are considered rich enough to forbid general knowledge
 DEFAULT_RICH_THRESHOLD = 1500
 
-# Below this length, the history section of an administrative entity is
-# completed by its dedicated history article (e.g. "Histoire de la Haute-Saône")
-MIN_HISTORY_CHARS = 400
+# The history excerpt of an administrative entity is completed by its
+# dedicated history article (e.g. "Histoire du Nord-Pas-de-Calais") as long as
+# at least this many characters of its budget remain
+MIN_COMPLEMENT_CHARS = 500
 
 # Year at which the current French regions were created
 CURRENT_REGIONS_YEAR = 2016
@@ -182,6 +183,40 @@ _MESSAGES = {
         "no_history": "The article \"%s\" has no usable history section.",
     },
 }
+
+#############
+# Functions #
+#############
+
+
+def _without_repeats(text: str, previous: str) -> str:
+    """
+    Remove the paragraphs of a text already present in a previous excerpt.
+
+    Parameters
+    ----------
+    text : str
+        New excerpt, one paragraph per line.
+    previous : str
+        Excerpt already given.
+
+    Returns
+    -------
+    str
+        New excerpt without the repeated paragraphs (headings kept only when
+        followed by a paragraph).
+    """
+    known = {normalize(line)[:120] for line in previous.splitlines() if line.strip()}
+    lines = [line for line in text.splitlines()
+             if line.startswith("— ") or normalize(line)[:120] not in known]
+    kept = []
+    for index, line in enumerate(lines):
+        is_heading = line.startswith("— ")
+        next_is_text = index + 1 < len(lines) and not lines[index + 1].startswith("— ")
+        if not is_heading or next_is_text:
+            kept.append(line)
+    return "\n".join(kept)
+
 
 ###########
 # Classes #
@@ -498,7 +533,7 @@ class SourceCollector:
                      high: Optional[int], seen: Set[str], result: CollectedSources):
         """
         Add the history excerpt of an administrative entity, completed by its
-        dedicated history article when the history section is too thin.
+        dedicated history article while the budget allows it.
 
         Parameters
         ----------
@@ -522,15 +557,14 @@ class SourceCollector:
             sections = history_sections(parse_sections(page.text))
             text = select_paragraphs(sections, low, high, self.budgets[level])
             self._append(page, level, text, seen, result)
-        if len(text) >= MIN_HISTORY_CHARS or not name:
+        budget = self.budgets[level] - len(text)
+        if budget < MIN_COMPLEMENT_CHARS or not name:
             return
         article = self._find_history_article(name)
         if article is None or article.title in seen:
             return
-        budget = self.budgets[level] - len(text)
-        self._append(article, level,
-                     select_paragraphs(parse_sections(article.text), low, high, budget),
-                     seen, result)
+        complement = select_paragraphs(parse_sections(article.text), low, high, budget)
+        self._append(article, level, _without_repeats(complement, text), seen, result)
 
     def _add_france_periods(self, first_year: int, last_year: Optional[int], seen: Set[str],
                             result: CollectedSources,
