@@ -9,7 +9,8 @@ Only report:
 - conclusions the excerpts do not state;
 - passages between <cg> and </cg> tags that are wrong or anachronistic (they need not be in the excerpts: they are general knowledge marked as such);
 - passages designating a real person ("he", "she", "your ancestor", a name) or presenting a landmark as a birth, a marriage or a death;
-- digressions unrelated to life there during the period, or after the last landmark.
+- digressions: anecdotes (death or deed of a famous person, news items, administrative reorganizations), facts unrelated to life there, more than ten years before the first landmark or after the last one;
+- a war, an invasion or an occupation between the first and the last landmark that the text leaves out.
 
 Do not report: the description of a typical inhabitant, nor the general description of the occupation given with the landmarks and of its place in the society of the time, which are expected.
 

@@ -173,6 +173,8 @@ def format_sources(extracts: List[SourceExtract], lang: str) -> str:
     blocks = []
     for extract in extracts:
         level = LEVEL_NAMES[lang].get(extract.level, extract.level)
+        if extract.span:
+            level = "%s, %s" % (level, extract.span)
         blocks.append("[%d] %s (%s)\n\"\"\"\n%s\n\"\"\"" % (
             extract.number, extract.title, level, extract.text))
     return "\n\n".join(blocks)

@@ -26,7 +26,7 @@ from .sources.hierarchy import SourceCollector
 from .sources.wikipedia import WikipediaClient
 from .validation import (
     answer_excerpt, check_locally, drop_unfounded_cg_problems, messages, parse_llm_validation,
-    tidy_problem)
+    repair_cg_tags, tags_balanced, tidy_problem)
 
 #############
 # Constants #
@@ -188,11 +188,13 @@ class StoryPipeline:
                                 prepared.system, prepared.user])
         cached = self.cache.get("llm", cache_key) if use_cache else None
         if cached:
-            text, truncated, model = cached["text"], cached["truncated"], cached["model"]
+            text, truncated, model = (repair_cg_tags(cached["text"]), cached["truncated"],
+                                      cached["model"])
         else:
             self.progress(provider.model)
             response = provider.generate(prepared.system, prepared.user)
-            text, truncated, model = response.text, response.truncated, response.model
+            text, truncated, model = (repair_cg_tags(response.text), response.truncated,
+                                      response.model)
             self.cache.set("llm", cache_key, {"text": text, "truncated": truncated, "model": model})
 
         report = self._check(text, truncated, request, prepared)
@@ -330,12 +332,17 @@ class StoryPipeline:
         except LLMError as exc:
             report.warnings.append(texts["correction_failed"] % exc)
             return None
-        new_report = self._check(response.text, response.truncated, request, prepared)
+        corrected = repair_cg_tags(response.text)
+        new_report = self._check(corrected, response.truncated, request, prepared)
         if not new_report.ok or response.truncated:
             reason = "; ".join(new_report.errors) or texts["truncated"]
             report.warnings.append(texts["correction_failed"] % reason)
             return None
+        if tags_balanced(text) and not tags_balanced(corrected):
+            # General knowledge would be presented as sourced
+            report.warnings.append(texts["correction_failed"] % texts["correction_tags"])
+            return None
         new_report.corrected_problems = list(problems)
         # Check the corrected text again so that the report tells what remains
-        self._validate_with_llm(response.text, prepared, new_report)
-        return response.text, new_report
+        self._validate_with_llm(corrected, prepared, new_report)
+        return corrected, new_report

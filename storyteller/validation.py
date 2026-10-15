@@ -56,6 +56,7 @@ _MESSAGES = {
         "llm_problem": "Validation LLM : %s",
         "correction_failed": "La correction automatique a échoué (%s) : le texte initial est "
                              "conservé.",
+        "correction_tags": "le marquage des connaissances générales a été perdu",
     },
     "en": {
         "empty": "The generated text is empty.",
@@ -70,6 +71,7 @@ _MESSAGES = {
                          "increase \"Max tokens\".",
         "llm_problem": "LLM validation: %s",
         "correction_failed": "The automatic correction failed (%s): the initial text is kept.",
+        "correction_tags": "the general knowledge marking was lost",
     },
 }
 
@@ -124,6 +126,40 @@ def split_general_knowledge(text: str) -> Tuple[List[Tuple[str, bool]], bool]:
         elif token:
             segments.append((token, inside))
     return segments, balanced and not inside
+
+
+def repair_cg_tags(text: str) -> str:
+    """
+    Complete the <cg> tags cut by the model (e.g. a final "</cg").
+
+    Parameters
+    ----------
+    text : str
+        Generated text.
+
+    Returns
+    -------
+    str
+        Text whose tags all end with ">".
+    """
+    return re.sub(r"<(/?)cg\b(?!>)\s*", r"<\1cg>", text, flags=re.IGNORECASE)
+
+
+def tags_balanced(text: str) -> bool:
+    """
+    Tell whether the <cg> tags of a text are balanced.
+
+    Parameters
+    ----------
+    text : str
+        Generated text.
+
+    Returns
+    -------
+    bool
+        True when every <cg> is closed.
+    """
+    return split_general_knowledge(text)[1]
 
 
 def strip_urls(text: str) -> str:

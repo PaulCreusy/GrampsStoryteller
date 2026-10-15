@@ -170,6 +170,22 @@ def test_failed_correction_keeps_the_initial_text(isolated_dirs):
     assert not provider.texts and len(provider.prompts) == 2
 
 
+def test_correction_losing_the_general_knowledge_marks_is_rejected(isolated_dirs):
+    settings = Settings()
+    settings["llm_validation"] = True
+    settings["auto_correction"] = True
+    provider = FakeProvider([
+        "Texte. <cg>Les maisons sont en briques.</cg> Phrase fausse.",
+        '{"ok": false, "problemes": ["« Phrase fausse » : absente"]}',
+        "Texte. Les maisons sont en briques.</cg",
+    ])
+    result = StoryPipeline(settings, cache=DiskCache(None), wiki_client=FakeWikipedia(PAGES),
+                           provider=provider).generate(_request())
+    assert result.original_text is None
+    assert "<cg>Les maisons" in result.text
+    assert any("connaissances générales a été perdu" in w for w in result.validation.warnings)
+
+
 def test_custom_prompts_are_used(isolated_dirs):
     settings = Settings()
     settings["user_prompt"] = "R={reperes} L={langue} N={longueur} J={\"json\": 1}"

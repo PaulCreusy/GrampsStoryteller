@@ -176,6 +176,9 @@ class SourceExtract:
         Selected excerpt.
     number : int
         Reference number used in the generated text ([1], [2]...).
+    span : str
+        Years covered by a national period (e.g. "1914–1918"), empty
+        otherwise.
     """
 
     title: str
@@ -183,6 +186,7 @@ class SourceExtract:
     url: str
     text: str
     number: int = 0
+    span: str = ""
 
 
 @dataclass

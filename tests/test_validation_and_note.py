@@ -143,3 +143,11 @@ def test_stray_quotes_do_not_hide_general_knowledge():
         "« Le département est marqué » : non sourcé"
     assert tidy_problem("« Lille » : absent") == "« Lille » : absent"
     assert tidy_problem("Digression", "en") == "Digression"
+
+
+def test_cut_tags_are_repaired():
+    from storyteller.validation import repair_cg_tags, tags_balanced
+    assert repair_cg_tags("<cg>Texte.</cg") == "<cg>Texte.</cg>"
+    assert repair_cg_tags("<cg Texte.</cg>") == "<cg>Texte.</cg>"
+    assert not tags_balanced("Texte.</cg>")
+    assert tags_balanced("<cg>A</cg> B")
