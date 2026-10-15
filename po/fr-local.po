@@ -99,7 +99,7 @@ msgstr "Aucune personne n'a été traitée."
 msgid "Storyteller result"
 msgstr "Résultat de Storyteller"
 
-#: storyteller/gui/result_dialog.py:163 storyteller/gui/sent_dialog.py:64 storyteller/gui/tool_window.py:183
+#: storyteller/gui/result_dialog.py:163 storyteller/gui/sent_dialog.py:64 storyteller/gui/tool_window.py:187
 msgid "_Close"
 msgstr "_Fermer"
 
@@ -158,16 +158,16 @@ msgstr "Affiche la requête : les extraits Wikipédia et les prompts. Les extrai
 msgid "Fetch the Wikipedia excerpts"
 msgstr "Récupérer les extraits Wikipédia"
 
-#: storyteller/gui/sent_dialog.py:164 storyteller/gui/tool_window.py:858
+#: storyteller/gui/sent_dialog.py:164 storyteller/gui/tool_window.py:866
 msgid "Collecting the Wikipedia sources..."
 msgstr "Collecte des sources Wikipédia…"
 
-#: storyteller/gui/sent_dialog.py:167 storyteller/gui/tool_window.py:829
+#: storyteller/gui/sent_dialog.py:167 storyteller/gui/tool_window.py:835
 #, python-format
 msgid "Working: %s"
 msgstr "En cours : %s"
 
-#: storyteller/gui/sent_dialog.py:222 storyteller/gui/settings_dialog.py:419 storyteller/gui/tool_window.py:558 storyteller/gui/tool_window.py:892
+#: storyteller/gui/sent_dialog.py:222 storyteller/gui/settings_dialog.py:419 storyteller/gui/tool_window.py:562 storyteller/gui/tool_window.py:923
 #, python-format
 msgid "Error: %s"
 msgstr "Erreur : %s"
@@ -197,7 +197,7 @@ msgstr "Message utilisateur"
 msgid "Storyteller settings"
 msgstr "Paramètres de Storyteller"
 
-#: storyteller/gui/settings_dialog.py:62 storyteller/gui/tool_window.py:801
+#: storyteller/gui/settings_dialog.py:62 storyteller/gui/tool_window.py:805
 msgid "_Cancel"
 msgstr "_Annuler"
 
@@ -380,214 +380,214 @@ msgstr "a déjà une note"
 msgid "Occupation: %s"
 msgstr "Profession : %s"
 
-#: storyteller/gui/tool_window.py:176
+#: storyteller/gui/tool_window.py:180
 msgid "_Settings..."
 msgstr "_Paramètres…"
 
-#: storyteller/gui/tool_window.py:177
+#: storyteller/gui/tool_window.py:181
 msgid "_Data sent..."
 msgstr "_Données envoyées…"
 
-#: storyteller/gui/tool_window.py:178
+#: storyteller/gui/tool_window.py:182
 msgid "Shows the years and places sent for each person and, on demand, the full request with the Wikipedia excerpts. Nothing is sent to the LLM."
 msgstr "Affiche les années et les lieux envoyés pour chaque personne et, à la demande, la requête complète avec les extraits Wikipédia. Rien n'est envoyé au LLM."
 
-#: storyteller/gui/tool_window.py:181
+#: storyteller/gui/tool_window.py:185
 msgid "_Stop"
 msgstr "A_rrêter"
 
-#: storyteller/gui/tool_window.py:182 storyteller/gui/tool_window.py:801
+#: storyteller/gui/tool_window.py:186 storyteller/gui/tool_window.py:805
 msgid "_Generate"
 msgstr "_Générer"
 
-#: storyteller/gui/tool_window.py:190
+#: storyteller/gui/tool_window.py:194
 msgid "Persons"
 msgstr "Personnes"
 
-#: storyteller/gui/tool_window.py:191
+#: storyteller/gui/tool_window.py:195
 msgid "Options"
 msgstr "Options"
 
-#: storyteller/gui/tool_window.py:216
+#: storyteller/gui/tool_window.py:220
 msgid "Active person"
 msgstr "Personne active"
 
-#: storyteller/gui/tool_window.py:217
+#: storyteller/gui/tool_window.py:221
 msgid "Persons selected in the People view"
 msgstr "Personnes sélectionnées dans la vue Individus"
 
-#: storyteller/gui/tool_window.py:218
+#: storyteller/gui/tool_window.py:222
 msgid "Active person and their ancestors"
 msgstr "Personne active et ses ascendants"
 
-#: storyteller/gui/tool_window.py:219
+#: storyteller/gui/tool_window.py:223
 msgid "Active person and their descendants"
 msgstr "Personne active et ses descendants"
 
-#: storyteller/gui/tool_window.py:220
+#: storyteller/gui/tool_window.py:224
 msgid "Custom filter"
 msgstr "Filtre personnalisé"
 
-#: storyteller/gui/tool_window.py:221
+#: storyteller/gui/tool_window.py:225
 msgid "Whole tree"
 msgstr "Tout l'arbre"
 
-#: storyteller/gui/tool_window.py:227
+#: storyteller/gui/tool_window.py:231
 msgid "Generations:"
 msgstr "Générations :"
 
-#: storyteller/gui/tool_window.py:240
+#: storyteller/gui/tool_window.py:244
 msgid "Read the persons again (after changing the active person or the selection)."
 msgstr "Relire les personnes (après un changement de personne active ou de sélection)."
 
-#: storyteller/gui/tool_window.py:250
+#: storyteller/gui/tool_window.py:254
 msgid "Skip the persons who already have a Storyteller note"
 msgstr "Ignorer les personnes qui ont déjà une note Storyteller"
 
-#: storyteller/gui/tool_window.py:266
+#: storyteller/gui/tool_window.py:270
 msgid "Send the occupation"
 msgstr "Envoyer la profession"
 
-#: storyteller/gui/tool_window.py:269
+#: storyteller/gui/tool_window.py:273
 msgid "Regenerate (ignore the cache)"
 msgstr "Régénérer (ignorer le cache)"
 
-#: storyteller/gui/tool_window.py:270
+#: storyteller/gui/tool_window.py:274
 msgid "By default, a context already generated with the same sources and prompts is reused without calling the LLM."
 msgstr "Par défaut, un contexte déjà généré avec les mêmes sources et prompts est réutilisé sans appeler le LLM."
 
-#: storyteller/gui/tool_window.py:273
+#: storyteller/gui/tool_window.py:277
 msgid "LLM validation"
 msgstr "Validation par LLM"
 
-#: storyteller/gui/tool_window.py:277
+#: storyteller/gui/tool_window.py:281
 msgid "Checks the text with a second request (costs more tokens)."
 msgstr "Vérifie le texte par une seconde requête (consomme plus de tokens)."
 
-#: storyteller/gui/tool_window.py:278
+#: storyteller/gui/tool_window.py:282
 msgid "Automatic correction"
 msgstr "Correction automatique"
 
-#: storyteller/gui/tool_window.py:281
+#: storyteller/gui/tool_window.py:285
 msgid "When the validation finds problems, the text is rewritten without them, then checked again (two more requests)."
 msgstr "Quand la validation trouve des problèmes, le texte est réécrit sans eux, puis vérifié à nouveau (deux requêtes de plus)."
 
-#: storyteller/gui/tool_window.py:310
+#: storyteller/gui/tool_window.py:314
 msgid "Show the result"
 msgstr "Voir le résultat"
 
-#: storyteller/gui/tool_window.py:337
+#: storyteller/gui/tool_window.py:341
 #, python-format
 msgid "Model: %(provider)s · %(model)s — text language: %(lang)s"
 msgstr "Modèle : %(provider)s · %(model)s — langue du texte : %(lang)s"
 
-#: storyteller/gui/tool_window.py:528
+#: storyteller/gui/tool_window.py:532
 msgid "No person selected: select persons in the People view, then click \"Refresh\"."
 msgstr "Aucune personne sélectionnée : sélectionnez des personnes dans la vue Individus, puis cliquez sur « Actualiser »."
 
-#: storyteller/gui/tool_window.py:532
+#: storyteller/gui/tool_window.py:536
 msgid "No custom person filter: create one with Edit ▸ Person Filter Editor in the People view."
 msgstr "Aucun filtre personnalisé : créez-en un avec Édition ▸ Éditeur de filtres d'individus dans la vue Individus."
 
-#: storyteller/gui/tool_window.py:534
+#: storyteller/gui/tool_window.py:538
 msgid "No person matches this filter."
 msgstr "Aucune personne ne correspond à ce filtre."
 
-#: storyteller/gui/tool_window.py:536
+#: storyteller/gui/tool_window.py:540
 msgid "The tree has no person."
 msgstr "L'arbre ne contient aucune personne."
 
-#: storyteller/gui/tool_window.py:537
+#: storyteller/gui/tool_window.py:541
 msgid "No active person: select a person in the People view, then click \"Refresh\"."
 msgstr "Aucune personne active : sélectionnez une personne dans la vue Individus, puis cliquez sur « Actualiser »."
 
-#: storyteller/gui/tool_window.py:572
+#: storyteller/gui/tool_window.py:576
 #, python-format
 msgid "Reading the persons: %(done)d / %(total)d"
 msgstr "Lecture des personnes : %(done)d / %(total)d"
 
-#: storyteller/gui/tool_window.py:624
+#: storyteller/gui/tool_window.py:628
 #, python-format
 msgid "will not be processed: %s"
 msgstr "ne sera pas traitée : %s"
 
-#: storyteller/gui/tool_window.py:627
+#: storyteller/gui/tool_window.py:631
 msgid "its note will be replaced"
 msgstr "sa note sera remplacée"
 
-#: storyteller/gui/tool_window.py:629
+#: storyteller/gui/tool_window.py:633
 msgid "a note will be added"
 msgstr "une note sera ajoutée"
 
-#: storyteller/gui/tool_window.py:633
+#: storyteller/gui/tool_window.py:637
 #, python-format
 msgid "%(count)d persons, %(process)d to process."
 msgstr "%(count)d personnes, %(process)d à traiter."
 
-#: storyteller/gui/tool_window.py:637
+#: storyteller/gui/tool_window.py:641
 #, python-format
 msgid "%d note(s) will be replaced."
 msgstr "%d note(s) sera(ont) remplacée(s)."
 
-#: storyteller/gui/tool_window.py:640
+#: storyteller/gui/tool_window.py:644
 #, python-format
 msgid "%d skipped (living, private, without landmark or with a note): see \"Data sent\"."
 msgstr "%d ignorée(s) (vivantes, privées, sans repère ou déjà dotées d'une note) : voir « Données envoyées »."
 
-#: storyteller/gui/tool_window.py:742
+#: storyteller/gui/tool_window.py:746
 msgid "Stopping after the current request..."
 msgstr "Arrêt après la requête en cours…"
 
-#: storyteller/gui/tool_window.py:788
+#: storyteller/gui/tool_window.py:792
 #, python-format
 msgid "%(persons)d persons will receive a note (%(replaced)d replaced)."
 msgstr "%(persons)d personnes recevront une note (%(replaced)d remplacée(s))."
 
-#: storyteller/gui/tool_window.py:790
+#: storyteller/gui/tool_window.py:794
 #, python-format
 msgid "%(groups)d distinct context(s): at most %(requests)d LLM requests, about %(input)s input tokens and %(output)s output tokens."
 msgstr "%(groups)d contexte(s) distinct(s) : au plus %(requests)d requêtes au LLM, environ %(input)s tokens en entrée et %(output)s tokens en sortie."
 
-#: storyteller/gui/tool_window.py:795
+#: storyteller/gui/tool_window.py:799
 msgid "These are upper bounds: the cache avoids the requests already made, and reasoning models may use more output tokens."
 msgstr "Ce sont des maximums : le cache évite les requêtes déjà faites, et les modèles de raisonnement peuvent consommer plus de tokens en sortie."
 
-#: storyteller/gui/tool_window.py:797
+#: storyteller/gui/tool_window.py:801
 msgid "Each note is written in its own transaction and can be undone. The batch can be stopped at any time."
 msgstr "Chaque note est écrite dans sa propre transaction et peut être annulée. Le traitement peut être arrêté à tout moment."
 
-#: storyteller/gui/tool_window.py:800
+#: storyteller/gui/tool_window.py:804
 #, python-format
 msgid "Generate %d notes?"
 msgstr "Générer %d notes ?"
 
-#: storyteller/gui/tool_window.py:811
+#: storyteller/gui/tool_window.py:815
 msgid "Read-only tree"
 msgstr "Arbre en lecture seule"
 
-#: storyteller/gui/tool_window.py:811
+#: storyteller/gui/tool_window.py:815
 msgid "The family tree is opened read-only."
 msgstr "L'arbre familial est ouvert en lecture seule."
 
-#: storyteller/gui/tool_window.py:817
+#: storyteller/gui/tool_window.py:821
 msgid "Nothing to send for these persons."
 msgstr "Rien à envoyer pour ces personnes."
 
-#: storyteller/gui/tool_window.py:832
+#: storyteller/gui/tool_window.py:838
 #, python-format
 msgid "Context %(index)d / %(total)d: %(name)s"
 msgstr "Contexte %(index)d / %(total)d : %(name)s"
 
-#: storyteller/gui/tool_window.py:918
+#: storyteller/gui/tool_window.py:949
 #, python-format
 msgid "Error while writing the note: %s"
 msgstr "Erreur lors de l'écriture de la note : %s"
 
-#: storyteller/gui/tool_window.py:944
+#: storyteller/gui/tool_window.py:986
 msgid "Failed."
 msgstr "Échec."
 
-#: storyteller/gui/tool_window.py:945
+#: storyteller/gui/tool_window.py:987
 msgid "The generation failed"
 msgstr "La génération a échoué"
 
