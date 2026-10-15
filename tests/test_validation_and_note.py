@@ -151,3 +151,33 @@ def test_cut_tags_are_repaired():
     assert repair_cg_tags("<cg Texte.</cg>") == "<cg>Texte.</cg>"
     assert not tags_balanced("Texte.</cg>")
     assert tags_balanced("<cg>A</cg> B")
+
+
+def test_misplaced_tags_leave_no_double_space():
+    from storyteller.note_content import build_note_content
+    content = build_note_content("Un habitat en briques <cg> et du pain <cg>. Fin  ici.", [],
+                                 "P", "m", "fr")
+    first = content.text.split("\n")[0]
+    assert first == "Un habitat en briques et du pain. Fin ici."
+
+
+def test_daily_life_paragraph_is_general_knowledge():
+    from storyteller.note_content import build_note_content
+    from storyteller.validation import drop_unfounded_cg_problems
+    text = ("En 1906, une catastrophe frappe le bassin [1].\n\n"
+            "Le département est industriel.\n\n"
+            "Les maisons sont en briques depuis 1850. <cg>La bière est courante.</cg>")
+    content = build_note_content(text, [], "P", "m", "fr")
+    daily = "Les maisons sont en briques depuis 1850. La bière est courante."
+    start = content.text.index(daily)
+    italic = [(s, e) for kind, _v, s, e in content.tags if kind == "italic"]
+    assert (start, start + len(daily)) in italic
+    assert "dont le paragraphe sur la vie quotidienne" in content.text
+
+    # 1850 is not in the excerpts, but the daily life paragraph is not checked
+    report = check_locally(text, 1, "En 1906, une catastrophe.", set(), True, False)
+    assert not any("1850" in w for w in report.warnings)
+    assert not any("passage(s)" in w for w in report.warnings)
+    problems = ["« Les maisons sont en briques depuis 1850 » : absent des extraits",
+                "« Le département est industriel » : absent des extraits"]
+    assert drop_unfounded_cg_problems(text, problems) == problems[1:]

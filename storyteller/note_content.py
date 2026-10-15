@@ -17,7 +17,7 @@ from typing import List, Optional, Tuple
 # Local imports #
 from .models import SourceExtract
 from .prompts import LEVEL_NAMES
-from .validation import cited_numbers, split_general_knowledge, strip_urls
+from .validation import cited_numbers, split_daily_life, split_general_knowledge, strip_urls
 
 #############
 # Constants #
@@ -28,13 +28,15 @@ Tag = Tuple[str, Optional[str], int, int]
 
 _TEXTS = {
     "fr": {
-        "legend": "En italique : connaissances générales, non issues des sources ci-dessous.",
+        "legend": "En italique : connaissances générales (dont le paragraphe sur la vie "
+                  "quotidienne), non issues des sources ci-dessous.",
         "sources": "Sources",
         "footer": "Généré le %s — %s · %s",
         "date": "%d/%m/%Y",
     },
     "en": {
-        "legend": "In italics: general knowledge, not taken from the sources below.",
+        "legend": "In italics: general knowledge (including the daily life paragraph), not "
+                  "taken from the sources below.",
         "sources": "Sources",
         "footer": "Generated on %s — %s · %s",
         "date": "%Y-%m-%d",
@@ -88,7 +90,7 @@ class NoteContent:
 
 def _clean(text: str) -> str:
     """
-    Remove URLs, markdown emphasis and extra blank lines.
+    Remove URLs, markdown emphasis, extra spaces and extra blank lines.
 
     Parameters
     ----------
@@ -102,6 +104,11 @@ def _clean(text: str) -> str:
     """
     text = strip_urls(text)
     text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+    # Tags removed later must not leave double spaces or a space before a
+    # punctuation mark ("briques <cg> et", "laitiers <cg>.")
+    text = re.sub(r"[ \t]+(</?cg>)[ \t]+", r" \1", text, flags=re.IGNORECASE)
+    text = re.sub(r"[ \t]+(</?cg>)(?=[.,;:!?])", r"\1", text, flags=re.IGNORECASE)
+    text = re.sub(r"[ \t]{2,}", " ", text)
     text = re.sub(r"[ \t]+\n", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
@@ -136,8 +143,9 @@ def build_note_content(text: str, sources: List[SourceExtract], provider_label: 
     levels = LEVEL_NAMES.get(lang, LEVEL_NAMES["en"])
     content = NoteContent()
 
-    segments, _balanced = split_general_knowledge(_clean(text))
-    has_general = False
+    body, daily = split_daily_life(_clean(text))
+    segments, _balanced = split_general_knowledge(body)
+    has_general = bool(daily)
     for segment, is_general in segments:
         if is_general and segment.strip():
             has_general = True
@@ -149,6 +157,10 @@ def build_note_content(text: str, sources: List[SourceExtract], provider_label: 
             content.append(trailing)
         else:
             content.append(segment)
+    if daily:
+        # The daily life paragraph is general knowledge as a whole
+        content.append("\n\n")
+        content.append(daily, "italic")
     if has_general:
         content.append("\n\n")
         content.append(texts["legend"], "italic")

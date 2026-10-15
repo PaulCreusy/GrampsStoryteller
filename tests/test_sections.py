@@ -126,3 +126,22 @@ def test_bibliographic_references_are_dropped():
     text = select_paragraphs(history_sections(parse_sections(article)), 1878, 1924, 5000)
     assert "Cerf" not in text
     assert "filatures" in text
+
+
+def test_long_periods_are_covered_to_their_end():
+    filler = " Les notables de la ville débattent longuement de projets d'embellissement."
+    article = "Intro.\n== Histoire ==\n" + "\n".join(
+        "En %d, le conseil municipal se réunit.%s" % (year, filler * 3)
+        for year in range(1885, 1910)) + (
+        "\nEn 1914, le département est occupé par l'armée allemande et les habitants subissent "
+        "les réquisitions.\nEn 1925, les houillères emploient des milliers de mineurs.\n"
+        "En 1941, la grève des mineurs prive l'occupant de charbon.")
+    sections = history_sections(parse_sections(article))
+    text = select_paragraphs(sections, 1879, 1960, 2500)
+    assert len(text) <= 2500
+    assert "occupé par l'armée allemande" in text
+    assert "houillères" in text
+    assert "grève des mineurs" in text
+    assert "En 1885" in text  # the beginning of the period is still covered
+    # Article order is kept
+    assert text.index("En 1885") < text.index("1914") < text.index("1941")

@@ -56,30 +56,32 @@ LEVEL_NAMES = {
 
 _TEXTS = {
     "fr": {
-        "occupation": "Métier courant dans ces lieux, à décrire dans le paragraphe sur la vie "
-                      "quotidienne (sans l'attribuer à quelqu'un) : %s. Décris concrètement ce "
-                      "métier à cette époque et dans cette région : tâches, rang social par "
-                      "rapport aux cultivateurs, ouvriers, artisans et notables, niveau de vie "
-                      "(balises <cg> si les extraits n'en parlent pas).",
-        "rich": "Les extraits sont riches : les paragraphes 1 et 2 reposent uniquement sur eux. "
-                "Les connaissances générales, balisées <cg>, ne sont admises que pour la vie "
-                "quotidienne (paragraphe 3).",
-        "poor": "Les extraits sont limités : tu peux les compléter par des connaissances "
-                "historiques générales bien établies, réduites au strict nécessaire et balisées "
-                "<cg>. Privilégie toujours les extraits quand ils couvrent le sujet.",
+        "occupation": "Métier à présenter dans le paragraphe sur la vie quotidienne (sans "
+                      "l'attribuer à quelqu'un) : %s. Nomme-le directement, sans formule vague "
+                      "comme « un habitant peut exercer… » : définition s'il est peu connu "
+                      "aujourd'hui, tâches, rang social par rapport aux cultivateurs, ouvriers, artisans et "
+                      "notables, niveau de vie à cette époque et dans cette région.",
+        "rich": "Les extraits sont riches : les paragraphes 1 et 2 reposent uniquement sur eux, "
+                "sans connaissances générales. Le paragraphe 3 relève des connaissances "
+                "générales.",
+        "poor": "Les extraits sont limités : dans les paragraphes 1 et 2, tu peux les compléter "
+                "par des connaissances historiques générales bien établies, réduites au strict "
+                "nécessaire et balisées <cg>. Privilégie toujours les extraits quand ils couvrent "
+                "le sujet. Le paragraphe 3 relève des connaissances générales.",
         "no_source": "(aucun extrait disponible)",
     },
     "en": {
-        "occupation": "Common occupation in these places, to describe in the daily life "
-                      "paragraph (without attributing it to anyone): %s. Describe concretely "
-                      "this occupation at that time and in that region: tasks, social rank "
+        "occupation": "Occupation to present in the daily life paragraph (without "
+                      "attributing it to anyone): %s. Name it directly, without vague phrases "
+                      "such as \"an inhabitant may work as…\": definition if little known today, tasks, social rank "
                       "compared with farmers, workers, craftsmen and notables, standard of "
-                      "living (<cg> tags when the excerpts do not mention it).",
-        "rich": "The excerpts are rich: paragraphs 1 and 2 rely on them only. General knowledge, "
-                "wrapped in <cg>, is only allowed for daily life (paragraph 3).",
-        "poor": "The excerpts are limited: you may complete them with well-established general "
-                "historical knowledge, kept to the strict minimum and wrapped in <cg>. Always "
-                "prefer the excerpts when they cover the subject.",
+                      "living at that time and in that region.",
+        "rich": "The excerpts are rich: paragraphs 1 and 2 rely on them only, without general "
+                "knowledge. Paragraph 3 is general knowledge.",
+        "poor": "The excerpts are limited: in paragraphs 1 and 2, you may complete them with "
+                "well-established general historical knowledge, kept to the strict minimum and "
+                "wrapped in <cg>. Always prefer the excerpts when they cover the subject. "
+                "Paragraph 3 is general knowledge.",
         "no_source": "(no excerpt available)",
     },
 }

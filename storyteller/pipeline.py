@@ -201,7 +201,11 @@ class StoryPipeline:
         original_text = None
         if report.ok and self.settings["llm_validation"]:
             problems = self._validate_with_llm(text, prepared, report)
-            if problems and self.settings["auto_correction"]:
+            if problems and self.settings["auto_correction"] and not tags_balanced(text):
+                # The validation cannot tell sourced from general knowledge:
+                # a correction would delete general knowledge taken for sourced
+                report.warnings.append(messages(self.lang)["correction_skipped"])
+            elif problems and self.settings["auto_correction"]:
                 corrected = self._correct(text, problems, request, prepared, report)
                 if corrected is not None:
                     original_text, (text, report) = text, corrected
@@ -345,4 +349,9 @@ class StoryPipeline:
         new_report.corrected_problems = list(problems)
         # Check the corrected text again so that the report tells what remains
         self._validate_with_llm(corrected, prepared, new_report)
+        if new_report.llm_checked and new_report.llm_problems >= len(problems):
+            # Small models may "fix" correct facts: keep the correction only
+            # when it really reduces the problems
+            report.warnings.append(texts["correction_failed"] % texts["correction_worse"])
+            return None
         return corrected, new_report

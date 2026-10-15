@@ -5,9 +5,9 @@ Landmarks given to the writer:
 {profession}
 
 Only report:
-- statements outside <cg> and </cg> tags that the excerpts do not contain, or contradict;
+- in paragraphs 1 and 2, statements outside <cg> and </cg> tags that the excerpts do not contain, or contradict;
 - conclusions the excerpts do not state;
-- passages between <cg> and </cg> tags that are wrong or anachronistic (they need not be in the excerpts: they are general knowledge marked as such);
+- passages between <cg> and </cg> tags, and those of the last paragraph (daily life, entirely general knowledge), that are wrong, anachronistic or specific to another region: they need not be in the excerpts;
 - passages designating a real person ("he", "she", "your ancestor", a name) or presenting a landmark as a birth, a marriage or a death;
 - digressions: anecdotes (death or deed of a famous person, news items, administrative reorganizations), facts unrelated to life there, more than ten years before the first landmark or after the last one;
 - a war, an invasion or an occupation between the first and the last landmark that the text leaves out.

@@ -5,9 +5,9 @@ Repères donnés au rédacteur :
 {profession}
 
 Signale uniquement :
-- les affirmations hors balises <cg> et </cg> que les extraits ne contiennent pas, ou dont ils disent le contraire ;
+- dans les paragraphes 1 et 2, les affirmations hors balises <cg> et </cg> que les extraits ne contiennent pas, ou dont ils disent le contraire ;
 - les conclusions que les extraits n'énoncent pas ;
-- les passages entre balises <cg> et </cg> qui sont faux ou anachroniques (ils n'ont pas à figurer dans les extraits : ce sont des connaissances générales signalées comme telles) ;
+- les passages entre balises <cg> et </cg>, et ceux du dernier paragraphe (vie quotidienne, entièrement de connaissance générale), qui sont faux, anachroniques ou propres à une autre région : ils n'ont pas à figurer dans les extraits ;
 - les passages qui désignent une personne réelle (« il », « elle », « votre ancêtre », un nom) ou présentent un repère comme une naissance, un mariage ou un décès ;
 - les digressions : anecdotes (mort ou exploit d'une personnalité, fait divers, réorganisation administrative), faits sans rapport avec la vie sur place, antérieurs de plus de dix ans au premier repère ou postérieurs au dernier ;
 - l'oubli d'une guerre, d'une invasion ou d'une occupation survenue entre le premier et le dernier repère.

@@ -121,7 +121,7 @@ paragraphs are kept only under a heading specific to the period (e.g.
 "XIXe siècle", not "XXe et XXIe siècles"). When
 the local sources are rich, the LLM may only use outside knowledge for the daily
 life paragraph; otherwise it may add well-established general knowledge anywhere.
-General knowledge is shown in italics, with a one-line legend.
+General knowledge is shown in italics, with a one-line legend. The daily life paragraph is general knowledge as a whole: it is always in italics.
 
 The text has three short paragraphs, from the general to the particular: the
 national and regional context, the local context, then the daily life of an
