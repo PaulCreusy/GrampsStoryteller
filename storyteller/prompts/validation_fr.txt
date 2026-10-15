@@ -11,7 +11,7 @@ Signale uniquement :
 - les passages qui désignent une personne réelle (« il », « elle », « votre ancêtre », un nom) ou présentent un repère comme une naissance, un mariage ou un décès ;
 - les digressions sans rapport avec la vie sur place pendant la période, ou postérieures au dernier repère.
 
-Ne signale pas : la description d'un habitant type, ni la description générale du métier indiqué dans les repères, qui sont attendues.
+Ne signale pas : la description d'un habitant type, ni la description générale du métier indiqué dans les repères et de sa place dans la société de l'époque, qui sont attendues.
 
 Réponds uniquement avec un objet JSON de la forme {"ok": true, "problemes": []}, où chaque élément de "problemes" est une phrase courte en {langue} de la forme « passage cité » : explication du problème propre à ce passage. Cite les passages entre guillemets français « », jamais entre guillemets droits ("). N'écris rien avant ni après l'objet JSON.
 

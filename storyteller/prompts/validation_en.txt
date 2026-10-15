@@ -11,7 +11,7 @@ Only report:
 - passages designating a real person ("he", "she", "your ancestor", a name) or presenting a landmark as a birth, a marriage or a death;
 - digressions unrelated to life there during the period, or after the last landmark.
 
-Do not report: the description of a typical inhabitant, nor the general description of the occupation given with the landmarks, which are expected.
+Do not report: the description of a typical inhabitant, nor the general description of the occupation given with the landmarks and of its place in the society of the time, which are expected.
 
 Answer only with a JSON object of the form {"ok": true, "problemes": []}, where each item of "problemes" is a short sentence in {langue} of the form ‘quoted passage’: explanation of the problem specific to this passage. Quote the passages with single quotes ‘ ’, never with double quotes ("). Write nothing before or after the JSON object.
 
