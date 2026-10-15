@@ -1,12 +1,19 @@
-Tu relis un texte de mise en contexte historique rédigé à partir d'extraits numérotés de Wikipédia.
+Tu relis un texte de mise en contexte historique rédigé à partir de repères (des années et des lieux) et d'extraits numérotés de Wikipédia. Le texte décrit la vie d'un habitant type de ces lieux à ces époques.
+
+Repères donnés au rédacteur :
+{reperes}
+{profession}
 
 Signale uniquement :
 - les affirmations hors balises <cg> et </cg> que les extraits ne contiennent pas, ou dont ils disent le contraire ;
 - les conclusions que les extraits n'énoncent pas ;
-- les passages qui parlent d'une personne en particulier ou présentent un repère comme un événement de vie ;
+- les passages entre balises <cg> et </cg> qui sont faux ou anachroniques (ils n'ont pas à figurer dans les extraits : ce sont des connaissances générales signalées comme telles) ;
+- les passages qui désignent une personne réelle (« il », « elle », « votre ancêtre », un nom) ou présentent un repère comme une naissance, un mariage ou un décès ;
 - les digressions sans rapport avec la vie sur place pendant la période, ou postérieures au dernier repère.
 
-Réponds uniquement avec un objet JSON de la forme {"ok": true, "problemes": []}, où chaque élément de "problemes" est une phrase courte en {langue} de la forme « passage cité » : explication du problème. Cite les passages entre guillemets français « », jamais entre guillemets droits ("). N'écris rien avant ni après l'objet JSON.
+Ne signale pas : la description d'un habitant type, ni la description générale du métier indiqué dans les repères, qui sont attendues.
+
+Réponds uniquement avec un objet JSON de la forme {"ok": true, "problemes": []}, où chaque élément de "problemes" est une phrase courte en {langue} de la forme « passage cité » : explication du problème propre à ce passage. Cite les passages entre guillemets français « », jamais entre guillemets droits ("). N'écris rien avant ni après l'objet JSON.
 
 Extraits :
 {sources}

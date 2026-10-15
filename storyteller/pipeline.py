@@ -11,8 +11,8 @@ anonymized request -> Wikipedia sources -> prompt -> LLM -> checks.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
-from typing import Callable, List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Callable, Dict, List, Optional, Tuple
 
 # Local imports #
 from . import prompts
@@ -24,7 +24,8 @@ from .llm.registry import PRESETS, create_provider
 from .models import CollectedSources, ContextRequest, GenerationResult, ValidationReport
 from .sources.hierarchy import SourceCollector
 from .sources.wikipedia import WikipediaClient
-from .validation import answer_excerpt, check_locally, messages, parse_llm_validation
+from .validation import (
+    answer_excerpt, check_locally, drop_unfounded_cg_problems, messages, parse_llm_validation)
 
 #############
 # Constants #
@@ -58,11 +59,14 @@ class PreparedPrompt:
         User message.
     sources : CollectedSources
         Excerpts used in the message.
+    variables : dict
+        Template variables, reused by the validation and correction prompts.
     """
 
     system: str
     user: str
     sources: CollectedSources
+    variables: Dict[str, str] = field(default_factory=dict)
 
 
 class StoryPipeline:
@@ -153,7 +157,7 @@ class StoryPipeline:
         user = prompts.render(
             prompts.template_or_default(self.settings["user_prompt"], "user", self.lang),
             variables)
-        return PreparedPrompt(system=system, user=user, sources=sources)
+        return PreparedPrompt(system=system, user=user, sources=sources, variables=variables)
 
     def generate(self, request: ContextRequest, use_cache: bool = True) -> GenerationResult:
         """
@@ -264,11 +268,8 @@ class StoryPipeline:
         texts = messages(self.lang)
         template = prompts.template_or_default(self.settings["validation_prompt"], "validation",
                                                self.lang)
-        user = prompts.render(template, {
-            "sources": prompts.format_sources(prepared.sources.extracts, self.lang),
-            "texte": text,
-            "langue": self._language_name(),
-        })
+        user = prompts.render(template, dict(prepared.variables, texte=text,
+                                             langue=self._language_name()))
         self.progress("validation")
         try:
             response = self.provider.generate(
@@ -283,10 +284,11 @@ class StoryPipeline:
                                    else texts["llm_invalid"] % answer_excerpt(response.text))
             report.llm_problems += 1
             return []
-        report.llm_problems += len(parsed[1])
-        for problem in parsed[1]:
+        problems = drop_unfounded_cg_problems(text, parsed[1])
+        report.llm_problems += len(problems)
+        for problem in problems:
             report.warnings.append(texts["llm_problem"] % problem)
-        return parsed[1]
+        return problems
 
     def _correct(self, text: str, problems: List[str], request: ContextRequest,
                  prepared: PreparedPrompt,
@@ -317,12 +319,9 @@ class StoryPipeline:
         texts = messages(self.lang)
         template = prompts.template_or_default(self.settings["correction_prompt"], "correction",
                                                self.lang)
-        user = prompts.render(template, {
-            "sources": prompts.format_sources(prepared.sources.extracts, self.lang),
-            "texte": text,
-            "problemes": "\n".join("- %s" % problem for problem in problems),
-            "langue": self._language_name(),
-        })
+        user = prompts.render(template, dict(
+            prepared.variables, texte=text, langue=self._language_name(),
+            problemes="\n".join("- %s" % problem for problem in problems)))
         self.progress("correction")
         try:
             response = self.provider.generate(prepared.system, user)

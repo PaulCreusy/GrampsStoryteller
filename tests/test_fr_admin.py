@@ -57,3 +57,8 @@ def test_is_france():
     assert fr_admin.is_france("République française")
     assert not fr_admin.is_france("Belgique")
     assert not fr_admin.is_france(None)
+
+
+def test_ligatures_are_normalized():
+    from storyteller.fr_admin import normalize
+    assert normalize("Annœullin") == normalize("Annoeullin") == "annoeullin"

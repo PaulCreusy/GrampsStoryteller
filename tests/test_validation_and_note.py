@@ -116,3 +116,17 @@ def test_note_content():
 def test_no_legend_without_general_knowledge():
     content = build_note_content("Texte sourcé.", [], "OpenAI", "m", "fr")
     assert "En italique" not in content.text
+
+
+def test_general_knowledge_is_not_blamed_for_missing_from_the_excerpts():
+    from storyteller.validation import drop_unfounded_cg_problems
+    text = ("Le Nord devient la première usine de France. <cg>La pratique religieuse demeure "
+            "un élément important de la vie sociale.</cg> <cg>Le pain est à base de seigle "
+            "depuis 1950.</cg>")
+    problems = [
+        "La pratique religieuse demeure un élément important de la vie sociale : affirmation "
+        "non contenue dans les extraits",
+        "« Le pain est à base de seigle depuis 1950 » : anachronique",
+        "« la première usine de France » : absent des extraits",
+    ]
+    assert drop_unfounded_cg_problems(text, problems) == problems[1:]

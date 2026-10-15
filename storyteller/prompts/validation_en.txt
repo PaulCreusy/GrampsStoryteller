@@ -1,12 +1,19 @@
-You proofread a historical context written from numbered Wikipedia excerpts.
+You proofread a historical context written from landmarks (years and places) and numbered Wikipedia excerpts. The text describes the life of a typical inhabitant of these places at these times.
+
+Landmarks given to the writer:
+{reperes}
+{profession}
 
 Only report:
 - statements outside <cg> and </cg> tags that the excerpts do not contain, or contradict;
 - conclusions the excerpts do not state;
-- passages talking about a particular person or presenting a landmark as a life event;
+- passages between <cg> and </cg> tags that are wrong or anachronistic (they need not be in the excerpts: they are general knowledge marked as such);
+- passages designating a real person ("he", "she", "your ancestor", a name) or presenting a landmark as a birth, a marriage or a death;
 - digressions unrelated to life there during the period, or after the last landmark.
 
-Answer only with a JSON object of the form {"ok": true, "problemes": []}, where each item of "problemes" is a short sentence in {langue} of the form ‘quoted passage’: explanation of the problem. Quote the passages with single quotes ‘ ’, never with double quotes ("). Write nothing before or after the JSON object.
+Do not report: the description of a typical inhabitant, nor the general description of the occupation given with the landmarks, which are expected.
+
+Answer only with a JSON object of the form {"ok": true, "problemes": []}, where each item of "problemes" is a short sentence in {langue} of the form ‘quoted passage’: explanation of the problem specific to this passage. Quote the passages with single quotes ‘ ’, never with double quotes ("). Write nothing before or after the JSON object.
 
 Excerpts:
 {sources}

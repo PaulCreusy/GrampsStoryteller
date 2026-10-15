@@ -28,6 +28,13 @@ _CITATION = re.compile(r"\[(\d+(?:\s*[,;–-]\s*\d+)*)\]")
 _CG_SPLIT = re.compile(r"(</?cg>)", re.IGNORECASE)
 _YEAR = re.compile(r"(?<![\d.,])(1[0-9]{3}|20[0-9]{2})(?!\d)")
 _URL = re.compile(r"https?://\S+")
+_QUOTED = re.compile(r"«\s*(.+?)\s*»|‘(.+?)’|“(.+?)”")
+# Reasons meaning "not in the excerpts", which do not apply to general knowledge
+_ABSENT = re.compile(r"absent|non contenu|pas contenu|ne figure|pas dans les extraits|non sourc|"
+                     r"pas sourc|n'apparai|not in the excerpts|not contained|not supported|"
+                     r"unsupported|not sourced|not mentioned", re.IGNORECASE)
+_WRONG = re.compile(r"faux|fausse|erron|inexact|anachron|contredi|wrong|false|incorrect|"
+                    r"inaccurate|contradict", re.IGNORECASE)
 _LOOSE_OK = re.compile(r'"?ok"?\s*:\s*"?(true|false)', re.IGNORECASE)
 _LOOSE_PROBLEMS = re.compile(r'"?(?:problemes|problèmes|problems)"?\s*:\s*\[', re.IGNORECASE)
 
@@ -379,3 +386,61 @@ def answer_excerpt(raw: str, length: int = 160) -> str:
     """
     text = " ".join(raw.split())
     return text if len(text) <= length else text[:length] + "…"
+
+
+def _split_problem(problem: str) -> Tuple[str, str]:
+    """
+    Split a validation problem into the quoted passage and the explanation.
+
+    Parameters
+    ----------
+    problem : str
+        Problem, usually « passage » : explanation.
+
+    Returns
+    -------
+    tuple of (str, str)
+        Passage (the part before the first colon when nothing is quoted)
+        and explanation.
+    """
+    match = _QUOTED.search(problem)
+    if match:
+        passage = next(group for group in match.groups() if group)
+        return passage, problem[match.end():]
+    parts = re.split(r"\s*:\s", problem, maxsplit=1)
+    return parts[0], parts[1] if len(parts) > 1 else ""
+
+
+def drop_unfounded_cg_problems(text: str, problems: List[str]) -> List[str]:
+    """
+    Remove the problems that only blame general knowledge for not being in
+    the excerpts: it is allowed when marked with <cg>.
+
+    Parameters
+    ----------
+    text : str
+        Checked text, with <cg> tags.
+    problems : list of str
+        Problems found by the LLM validation.
+
+    Returns
+    -------
+    list of str
+        Problems to keep.
+    """
+    segments, _balanced = split_general_knowledge(text)
+
+    def flat(value: str) -> str:
+        return " ".join(value.replace("…", " ").replace("...", " ").split()).lower()
+
+    general = flat(" ".join(s for s, is_cg in segments if is_cg))
+    sourced = flat(" ".join(s for s, is_cg in segments if not is_cg))
+    kept = []
+    for problem in problems:
+        passage, reason = _split_problem(problem)
+        passage = flat(passage)
+        in_general = len(passage) >= 12 and passage in general and passage not in sourced
+        if in_general and _ABSENT.search(reason) and not _WRONG.search(reason):
+            continue
+        kept.append(problem)
+    return kept

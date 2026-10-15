@@ -70,3 +70,18 @@ def test_period_bounds():
     assert period_bounds(ContextRequest(lines=[], year_min=1800, year_max=1870)) == (1795, 1870)
     assert period_bounds(ContextRequest(lines=[], year_min=1800, year_max=1800)) == (1770, 1830)
     assert period_bounds(ContextRequest(lines=[])) == (None, None)
+
+
+def test_street_addresses_are_reduced_to_the_commune():
+    from storyteller.anonymizer import commune_name
+    assert commune_name("35 Rue Jules Guesdes   Annoeullin") == "Annoeullin"
+    assert commune_name("Rue De Don   Annoeullin") == "Annoeullin"
+    assert commune_name("Route de Don, Annoeullin, Nord, France") == "Annoeullin"
+    assert commune_name("Saint-Pol-de-Léon") == "Saint-Pol-de-Léon"
+    assert commune_name("Plouguerneau, Finistère") == "Plouguerneau, Finistère"
+    facts = PersonFacts(handle="h", gramps_id="I1", name="x", landmarks=[
+        Landmark(year=1880, place=PlaceInfo(name="Rue De Don   Annoeullin", country="France",
+                                            code="59112"))])
+    request = build_request(facts, "fr")
+    assert request.lines == ["1880 – Annoeullin (Nord, France)"]
+    assert request.places[0].name == "Annoeullin"

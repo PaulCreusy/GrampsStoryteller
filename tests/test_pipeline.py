@@ -111,6 +111,7 @@ def test_llm_validation_is_optional(isolated_dirs):
     result = pipeline.generate(_request())
     assert len(provider.prompts) == 2
     assert "Texte [1]." in provider.prompts[1][1]
+    assert "1832 – Brest (Finistère, France)" in provider.prompts[1][1]
     assert result.validation.llm_checked
     assert result.validation.llm_problems == 1
     assert any("Phrase 2 inventée" in w for w in result.validation.warnings)

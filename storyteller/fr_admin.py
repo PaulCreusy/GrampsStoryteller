@@ -239,7 +239,9 @@ def normalize(text: str) -> str:
     str
         Normalized name.
     """
-    decomposed = unicodedata.normalize("NFKD", text or "")
+    # Ligatures have no decomposition (Annœullin = Annoeullin)
+    text = (text or "").replace("œ", "oe").replace("Œ", "Oe").replace("æ", "ae").replace("Æ", "Ae")
+    decomposed = unicodedata.normalize("NFKD", text)
     stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
     stripped = re.sub(r"[^a-zA-Z0-9]+", " ", stripped)
     return stripped.strip().lower()
