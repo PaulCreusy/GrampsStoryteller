@@ -11,7 +11,7 @@ identifier, an event type, a relative or a note of your tree.
 
 ## Requirements
 
-- Gramps 6.0 (5.1 and 5.2 support is planned).
+- Gramps 5.1, 5.2 or 6.0, with Python 3.8 or later.
 - Network access to Wikipedia and to the LLM provider.
 - An API key for a cloud provider, or a local server (Ollama, LM Studio...).
 
@@ -21,25 +21,55 @@ the system keyring.
 
 ## Installation
 
-### From Gramps' Addon Manager (recommended)
+Each Gramps version has its own package folder in this repository:
 
-1. In Gramps, open **Help ▸ Addon Manager**.
+| Gramps | Project URL |
+|---|---|
+| 6.0 | `https://raw.githubusercontent.com/PaulCreusy/GrampsStoryteller/main/addons/gramps60` |
+| 5.2 | `https://raw.githubusercontent.com/PaulCreusy/GrampsStoryteller/main/addons/gramps52` |
+| 5.1 | `https://raw.githubusercontent.com/PaulCreusy/GrampsStoryteller/main/addons/gramps51` |
+
+### Gramps 5.2 and 6.0: Addon Manager (recommended)
+
+1. In Gramps, open **Edit ▸ Addon Manager**.
 2. Open the **Projects** tab and click **+**.
-3. Enter a name (e.g. `GrampsStoryteller`) and this URL:
-
-   ```
-   https://raw.githubusercontent.com/PaulCreusy/GrampsStoryteller/main/addons/gramps60
-   ```
-
+3. Enter a name (e.g. `GrampsStoryteller`) and the project URL of your Gramps
+   version (see the table above).
 4. Back in the **Addons** tab, pick **Storyteller: historical context** and click
    **Install**.
 5. Restart Gramps. The tool appears in **Tools ▸ Family Tree Processing**.
 
+Updates are then offered by the Addon Manager like those of the official addons.
+
+### Gramps 5.1: update check
+
+Gramps 5.1 checks a single addon repository, so the official one has to be
+replaced for a moment:
+
+1. Open **Edit ▸ Preferences ▸ General** and note the **Where to check** URL
+   (the official one is
+   `https://raw.githubusercontent.com/gramps-project/addons/master/gramps51`).
+2. Replace it with the Gramps 5.1 project URL (see the table above) and set
+   **What to check** to include new addons.
+3. Click **Check for updated addons now**, tick **Storyteller: historical
+   context** and click **Install Selected Addons**.
+4. Put the official URL back in **Where to check**, then restart Gramps.
+
+Repeat these steps to install a new version.
+
 ### Manual installation
 
-Extract `addons/gramps60/download/GrampsStoryteller.addon.tgz` into the Gramps
-user plugins directory (e.g. `~/.local/share/gramps/gramps60/plugins/`), then
-restart Gramps.
+Extract `GrampsStoryteller.addon.tgz`, from the `download` folder of your Gramps
+version, into the Gramps user plugins directory, then restart Gramps:
+
+| Gramps | Linux | Windows |
+|---|---|---|
+| 6.0 | `~/.local/share/gramps/gramps60/plugins/` | `%LOCALAPPDATA%\gramps\gramps60\plugins\` |
+| 5.2 | `~/.local/share/gramps/gramps52/plugins/` | `%LOCALAPPDATA%\gramps\gramps52\plugins\` |
+| 5.1 | `~/.gramps/gramps51/plugins/` | `%APPDATA%\gramps\gramps51\plugins\` |
+
+Gramps 5.2 and 6.0 keep using the 5.1 folder (`~/.gramps` or
+`%APPDATA%\gramps`) when it already exists.
 
 ## Usage
 
@@ -170,7 +200,7 @@ separate setting.
 python3 -m pytest tests            # core tests (Gramps tests are skipped)
 python3 scripts/i18n.py update     # refresh po/template.pot and po/fr-local.po
 python3 scripts/i18n.py check      # list the missing translations
-python3 scripts/build_addon.py     # rebuild addons/gramps60 after a change
+python3 scripts/build_addon.py     # rebuild addons/gramps51, gramps52 and gramps60
 ```
 
 Interface strings are the literals passed to `_()`. After adding or changing

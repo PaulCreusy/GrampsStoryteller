@@ -53,3 +53,31 @@ def test_archive_is_reproducible(tmp_path):
     with tarfile.open(first) as tar:
         names = tar.getnames()
     assert all(name.startswith("GrampsStoryteller/") for name in names)
+
+
+def test_help_url_is_not_registered_with_gramps_5_1():
+    builder = _load_builder()
+    assert "help_url" not in builder.read_gpr_metadata("5.1")
+    for version in ("5.2", "6.0"):
+        assert builder.read_gpr_metadata(version)["help_url"].startswith("https://github.com/")
+
+
+def test_listing_format_of_each_gramps_version():
+    builder = _load_builder()
+    old = builder.listing_entry("fr", builder.read_gpr_metadata("5.1"), "5.1")
+    assert old["t"] == "Tool" and old["g"] == "5.1"
+    assert old["n"] == "Storyteller : contexte historique"
+    # Gramps 5.1 evaluates each line of the .txt listing as a Python literal
+    assert eval(repr(old), {}) == old
+    new = builder.listing_entry("en", builder.read_gpr_metadata("6.0"), "6.0")
+    assert (new["t"], new["s"], new["a"], new["g"]) == (2, 3, 0, "6.0")
+    assert new["h"].startswith("https://github.com/")
+
+
+def test_committed_listings_exist_for_every_version():
+    builder = _load_builder()
+    for version in builder.GRAMPS_VERSIONS:
+        folder = os.path.join(REPO_ROOT, "addons", "gramps" + version.replace(".", ""))
+        extension = "txt" if version in builder.TXT_LISTING_VERSIONS else "json"
+        assert os.path.exists(os.path.join(folder, "listings", "addons-en.%s" % extension))
+        assert os.path.exists(os.path.join(folder, "download", "GrampsStoryteller.addon.tgz"))

@@ -15,6 +15,14 @@
 from gramps.version import major_version
 
 #############
+# Constants #
+#############
+
+# Gramps 5.1 refuses a help URL for any plugin but a gramplet
+HELP_URL = {} if major_version == "5.1" else {
+    "help_url": "https://github.com/PaulCreusy/GrampsStoryteller#readme"}
+
+#############
 # Execution #
 #############
 
@@ -24,15 +32,15 @@ register(
     name=_("Storyteller: historical context"),
     description=_("Writes, in a note, the sourced historical context of the places and "
                   "periods where a person lived, without sending any identifying data."),
-    version="0.5.5",
+    version="0.6.0",
     gramps_target_version=major_version,
     status=STABLE,
     fname="GrampsStoryteller.py",
     authors=["Paul Creusy"],
     authors_email=["paul.creusy@gmail.com"],
-    help_url="https://github.com/PaulCreusy/GrampsStoryteller#readme",
     category=TOOL_DBPROC,
     toolclass="StorytellerTool",
     optionclass="StorytellerOptions",
     tool_modes=[TOOL_MODE_GUI],
+    **HELP_URL
 )

@@ -20,10 +20,12 @@ jobs:
       - run: python -m pytest -q tests
 
   gramps:
-    name: Tests with Gramps 6.0
+    name: Tests with Gramps ${{ matrix.gramps }}
     runs-on: ubuntu-24.04
-    env:
-      GRAMPS_VERSION: "6.0.4"
+    strategy:
+      fail-fast: false
+      matrix:
+        gramps: ["5.1.6", "5.2.4", "6.0.4"]
     steps:
       - uses: actions/checkout@v4
       - name: Install GObject introspection
@@ -31,15 +33,30 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y python3-gi gir1.2-gtk-3.0 python3-venv
       - name: Prepare Gramps sources
+        env:
+          GRAMPS_VERSION: ${{ matrix.gramps }}
         run: |
           python3 -m venv --system-site-packages "$RUNNER_TEMP/venv"
           "$RUNNER_TEMP/venv/bin/pip" install orjson pytest
-          "$RUNNER_TEMP/venv/bin/pip" download --no-deps --no-binary :all: \
-            "gramps==$GRAMPS_VERSION" -d "$RUNNER_TEMP"
-          tar xzf "$RUNNER_TEMP/gramps-$GRAMPS_VERSION.tar.gz" -C "$RUNNER_TEMP"
+          GRAMPS_DIR="$RUNNER_TEMP/gramps-$GRAMPS_VERSION"
+          case "$GRAMPS_VERSION" in
+            5.1.*)
+              # Gramps 5.1 is not published on PyPI
+              git clone --depth 1 --branch "v$GRAMPS_VERSION" \
+                https://github.com/gramps-project/gramps.git "$GRAMPS_DIR"
+              ;;
+            *)
+              "$RUNNER_TEMP/venv/bin/pip" download --no-deps --no-binary :all: \
+                "gramps==$GRAMPS_VERSION" -d "$RUNNER_TEMP"
+              tar xzf "$RUNNER_TEMP/gramps-$GRAMPS_VERSION.tar.gz" -C "$RUNNER_TEMP"
+              # Gramps 5.2 finds its resources next to the sources only in a
+              # git checkout
+              mkdir -p "$GRAMPS_DIR/.git"
+              ;;
+          esac
       - name: Run tests
         run: |
-          export PYTHONPATH="$RUNNER_TEMP/gramps-$GRAMPS_VERSION"
+          export PYTHONPATH="$RUNNER_TEMP/gramps-${{ matrix.gramps }}"
           export HOME="$RUNNER_TEMP/home"
           mkdir -p "$HOME"
           "$RUNNER_TEMP/venv/bin/python" -m pytest -q -p no:logging tests
