@@ -57,9 +57,9 @@ LEVEL_NAMES = {
 _TEXTS = {
     "fr": {
         "occupation": "Métier à présenter dans le paragraphe sur la vie quotidienne (sans "
-                      "l'attribuer à quelqu'un) : %s. Nomme-le directement (« À l'époque, "
-                      "un … est chargé de… ») : définition s'il est peu connu aujourd'hui, "
-                      "tâches, rang social par rapport aux cultivateurs, ouvriers, artisans et "
+                      "l'attribuer à quelqu'un) : %s. Nomme-le directement, sans formule vague "
+                      "comme « un habitant peut exercer… » : définition s'il est peu connu "
+                      "aujourd'hui, tâches, rang social par rapport aux cultivateurs, ouvriers, artisans et "
                       "notables, niveau de vie à cette époque et dans cette région.",
         "rich": "Les extraits sont riches : les paragraphes 1 et 2 reposent uniquement sur eux, "
                 "sans connaissances générales. Le paragraphe 3 relève des connaissances "
@@ -72,8 +72,8 @@ _TEXTS = {
     },
     "en": {
         "occupation": "Occupation to present in the daily life paragraph (without "
-                      "attributing it to anyone): %s. Name it directly (\"At the time, a … is "
-                      "in charge of…\"): definition if little known today, tasks, social rank "
+                      "attributing it to anyone): %s. Name it directly, without vague phrases "
+                      "such as \"an inhabitant may work as…\": definition if little known today, tasks, social rank "
                       "compared with farmers, workers, craftsmen and notables, standard of "
                       "living at that time and in that region.",
         "rich": "The excerpts are rich: paragraphs 1 and 2 rely on them only, without general "
