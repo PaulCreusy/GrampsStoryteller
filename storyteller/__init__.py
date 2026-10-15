@@ -9,4 +9,4 @@ Gramps family tree, without ever sending identifying data to external services.
 # Constants #
 #############
 
-__version__ = "0.5.3"
+__version__ = "0.5.4"

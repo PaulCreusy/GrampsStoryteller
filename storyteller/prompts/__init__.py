@@ -56,11 +56,11 @@ LEVEL_NAMES = {
 
 _TEXTS = {
     "fr": {
-        "occupation": "Métier courant dans ces lieux, à décrire dans le paragraphe sur la vie "
-                      "quotidienne (sans l'attribuer à quelqu'un) : %s. Décris concrètement ce "
-                      "métier à cette époque et dans cette région : tâches, rang social par "
-                      "rapport aux cultivateurs, ouvriers, artisans et notables, niveau de vie, "
-                      "en définissant d'abord tout métier peu connu aujourd'hui.",
+        "occupation": "Métier à présenter dans le paragraphe sur la vie quotidienne (sans "
+                      "l'attribuer à quelqu'un) : %s. Nomme-le directement (« À l'époque, "
+                      "un … est chargé de… ») : définition s'il est peu connu aujourd'hui, "
+                      "tâches, rang social par rapport aux cultivateurs, ouvriers, artisans et "
+                      "notables, niveau de vie à cette époque et dans cette région.",
         "rich": "Les extraits sont riches : les paragraphes 1 et 2 reposent uniquement sur eux, "
                 "sans connaissances générales. Le paragraphe 3 relève des connaissances "
                 "générales.",
@@ -71,11 +71,11 @@ _TEXTS = {
         "no_source": "(aucun extrait disponible)",
     },
     "en": {
-        "occupation": "Common occupation in these places, to describe in the daily life "
-                      "paragraph (without attributing it to anyone): %s. Describe concretely "
-                      "this occupation at that time and in that region: tasks, social rank "
+        "occupation": "Occupation to present in the daily life paragraph (without "
+                      "attributing it to anyone): %s. Name it directly (\"At the time, a … is "
+                      "in charge of…\"): definition if little known today, tasks, social rank "
                       "compared with farmers, workers, craftsmen and notables, standard of "
-                      "living, first defining any occupation little known today.",
+                      "living at that time and in that region.",
         "rich": "The excerpts are rich: paragraphs 1 and 2 rely on them only, without general "
                 "knowledge. Paragraph 3 is general knowledge.",
         "poor": "The excerpts are limited: in paragraphs 1 and 2, you may complete them with "
